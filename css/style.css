@@ -1,0 +1,123 @@
+/* Gold & Black Theme Stylesheet */
+:root {
+    --gold: #D4AF37;
+    --dark-bg: #0a0a0a;
+    --card-bg: #1a1a1a;
+    --text-grey: #a0a0a0;
+    --border-grey: #333;
+}
+
+body {
+    background-color: var(--dark-bg);
+    color: white;
+    font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+    margin: 0;
+    overflow-x: hidden;
+}
+
+/* Header */
+.gold-header {
+    text-align: center;
+    padding: 40px 20px;
+    border-bottom: 2px solid var(--gold);
+    background: linear-gradient(180deg, #1a1a1a 0%, #0a0a0a 100%);
+}
+
+.gold-header h1 {
+    color: var(--gold);
+    margin: 0;
+    font-size: 2.2rem;
+    letter-spacing: 2px;
+    text-shadow: 0 0 15px rgba(212, 175, 55, 0.3);
+}
+
+/* Auth Section */
+#auth-root {
+    margin-top: 15px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 10px;
+}
+
+/* Navigation Tab Bar */
+.gold-nav {
+    display: flex;
+    justify-content: center;
+    background: #111;
+    position: sticky;
+    top: 0;
+    z-index: 1000;
+    border-bottom: 1px solid var(--border-grey);
+}
+
+.nav-btn {
+    background: none;
+    border: none;
+    color: var(--text-grey);
+    padding: 15px 25px;
+    cursor: pointer;
+    font-weight: bold;
+    font-size: 0.9rem;
+    transition: 0.3s;
+}
+
+.nav-btn.active {
+    color: var(--gold);
+    border-bottom: 3px solid var(--gold);
+}
+
+/* Container */
+main {
+    max-width: 800px;
+    margin: 20px auto;
+    padding: 0 15px;
+    min-height: 60vh;
+}
+
+/* Table Style (League Standings အတွက်) */
+.gold-table {
+    width: 100%;
+    border-collapse: collapse;
+    background: var(--card-bg);
+    margin-bottom: 30px;
+    border-radius: 8px;
+    overflow: hidden;
+}
+
+.gold-table th {
+    background: var(--gold);
+    color: black;
+    padding: 12px;
+    text-align: left;
+}
+
+.gold-table td {
+    padding: 12px;
+    border-bottom: 1px solid var(--border-grey);
+}
+
+/* Buttons */
+.tw-btn-gold {
+    background: var(--gold);
+    color: black;
+    border: none;
+    padding: 10px 20px;
+    font-weight: bold;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: 0.2s;
+}
+
+.tw-btn-gold:hover {
+    background: #f1c40f;
+    transform: scale(1.02);
+}
+
+/* Loading Spinner */
+.loading {
+    text-align: center;
+    color: var(--gold);
+    margin
+      -top: 50px;
+}
