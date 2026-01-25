@@ -1,0 +1,35 @@
+name: TW MM Tournament Sync Robot
+
+on:
+  schedule:
+    # ၆ နာရီခြား တစ်ခါ အလိုအလျောက် Run ရန်
+    - cron: '0 */6 * * *'
+  
+  # GitHub Actions Tab မှ Manual Run ရန်
+  workflow_dispatch:
+
+jobs:
+  fpl_sync_job:
+    runs-on: ubuntu-latest
+
+    steps:
+      # ၁။ GitHub ရှိ ဖိုင်များကို Checkout လုပ်ခြင်း
+      - name: Checkout Repository Code
+        uses: actions/checkout@v3
+
+      # ၂။ Python Version 3.9 ကို သတ်မှတ်ခြင်း
+      - name: Set up Python 3.9
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.9'
+
+      # ၃။ လိုအပ်သော Library များကို Install လုပ်ခြင်း
+      - name: Install Dependencies
+        run: |
+          python -m pip install --upgrade pip
+          if [ -f scripts/requirements.txt ]; then pip install -r scripts/requirements.txt; fi
+
+      # ၄။ Python Script ကို စတင် Run ခြင်း
+      - name: Run FPL Sync Script
+        run: python scripts/sync_f
+        pl.py
