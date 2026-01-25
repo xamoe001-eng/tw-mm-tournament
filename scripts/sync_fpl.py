@@ -3,53 +3,93 @@ import firebase_admin
 from firebase_admin import credentials, firestore
 import os
 
+# 1. Firebase Initialize လုပ်ခြင်း
 def initialize_firebase():
     if not firebase_admin._apps:
-        # serviceAccountKey.json ကို scripts/ folder ထဲမှာ တင်ထားဖို့ လိုပါမယ်
+        # serviceAccountKey.json ဖိုင်သည် scripts/ folder ထဲတွင် ရှိနေရမည်
         cred_path = os.path.join(os.path.dirname(__file__), 'serviceAccountKey.json')
-        cred = credentials.Certificate(cred_path)
-        firebase_admin.initialize_app(cred)
+        try:
+            cred = credentials.Certificate(cred_path)
+            firebase_admin.initialize_app(cred)
+        except Exception as e:
+            print(f"Error: Firebase Key file not found or invalid. {e}")
+            return None
     return firestore.client()
 
 db = initialize_firebase()
+
+# 2. Tournament Configuration
 LEAGUE_ID = "400231"
 FPL_API = "https://fantasy.premierleague.com/api/"
+TOTAL_OFFICIALS = 48  # စုစုပေါင်း ၄၈ သင်း (League A - 24, League B - 24)
 
 def sync_data():
-    print("Fetching data from FPL...")
-    r = requests.get(f"{FPL_API}leagues-classic/{LEAGUE_ID}/standings/")
-    all_players = r.json()['standings']['results']
+    if not db:
+        return
 
-    # အမှတ်အများဆုံး ၅၀ ကို Ranking စီခြင်း
+    print("--- FPL Sync Process Started ---")
+    
+    # FPL API မှ Data ဆွဲယူခြင်း
+    try:
+        r = requests.get(f"{FPL_API}leagues-classic/{LEAGUE_ID}/standings/")
+        r.raise_for_status()
+        all_players = r.json()['standings']['results']
+    except Exception as e:
+        print(f"Error fetching data from FPL: {e}")
+        return
+
+    # အမှတ်အများဆုံးအတိုင်း Ranking ပြန်စီခြင်း (Tie-breaker အတွက် overall rank ကိုသုံးသည်)
     sorted_players = sorted(all_players, key=lambda x: (-x['total'], x['rank']))
 
     batch = db.batch()
+
+    print(f"Syncing {len(sorted_players)} players to Firebase...")
+
     for idx, player in enumerate(sorted_players):
         entry_id = str(player['entry'])
+        current_rank = idx + 1
         
-        # ထိပ်ဆုံး ၅၀ ကို Official (A/B) ခွဲခြားခြင်း
-        is_official = idx < 50
+        # Official Status & League Tagging
+        is_official = current_rank <= TOTAL_OFFICIALS
+        
         league_tag = "General"
+        playoff_seed = "Not Qualified"
+        
         if is_official:
-            league_tag = "A" if idx < 25 else "B"
+            # League A (1-24), League B (25-48)
+            league_tag = "A" if current_rank <= 24 else "B"
+            
+            # Playoff Seeding (48 Teams Knockout Plan)
+            if current_rank <= 16:
+                playoff_seed = "Top 16 (Bye to Round of 32)"
+            else:
+                playoff_seed = f"Round 1 (Seed {current_rank})"
 
+        # Data Structure
         data = {
             "manager_name": player['player_name'],
             "team_name": player['entry_name'],
-            "fpl_points": player['total'],
+            "fpl_total_points": player['total'],
             "gw_points": player['event_total'],
+            "overall_rank": player['rank'],
+            "tournament_rank": current_rank,
             "is_official": is_official,
             "league_tag": league_tag,
-            "rank": idx + 1,
+            "playoff_seed": playoff_seed,
             "last_updated": firestore.SERVER_TIMESTAMP
         }
 
+        # Firestore Document Reference
         doc_ref = db.collection("tw_mm_tournament").document(entry_id)
-        batch.set(doc_ref, data)
+        batch.set(doc_ref, data, merge=True)
 
-    batch.commit()
-    print("Sync Complete!")
+    # Batch Commit လုပ်ခြင်း
+    try:
+        batch.commit()
+        print(f"--- Sync Success! {TOTAL_OFFICIALS} Officials Synced Successfully ---")
+    except Exception as e:
+        print(f"Error committing batch to Firebase: {e}")
 
 if __name__ == "__main__":
-    syn
-    c_data()
+   
+    sync_data()
