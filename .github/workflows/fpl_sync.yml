@@ -1,11 +1,11 @@
 name: TW MM Tournament Sync Robot
 
 on:
-  # ၆ နာရီခြား တစ်ခါ အလိုအလျောက် Run ရန် (UTC အချိန်အရ 0, 6, 12, 18 နာရီများတွင် Run မည်)
   schedule:
+    # ၆ နာရီခြား တစ်ခါ အလိုအလျောက် Run ရန်
     - cron: '0 */6 * * *'
   
-  # GitHub Actions Tab မှ "Run workflow" ခလုတ်နှိပ်ပြီး Manual Run ရန်
+  # GitHub Actions Tab မှ Manual Run ရန်
   workflow_dispatch:
 
 jobs:
@@ -13,11 +13,11 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      # ၁။ GitHub ရှိ ဖိုင်များကို စက်ထဲသို့ Checkout လုပ်ခြင်း
+      # ၁။ GitHub ရှိ ဖိုင်များကို Checkout လုပ်ခြင်း
       - name: Checkout Repository Code
         uses: actions/checkout@v3
 
-      # ၂။ Python Version 3.9 ကို အသုံးပြုရန် သတ်မှတ်ခြင်း
+      # ၂။ Python Version 3.9 ကို သတ်မှတ်ခြင်း
       - name: Set up Python 3.9
         uses: actions/setup-python@v4
         with:
