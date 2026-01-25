@@ -31,5 +31,4 @@ jobs:
 
       # ၄။ Python Script ကို စတင် Run ခြင်း
       - name: Run FPL Sync Script
-        run: python scripts/sync_f
-        pl.py
+        run: python scripts/sync_fpl.py
