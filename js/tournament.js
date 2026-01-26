@@ -17,90 +17,83 @@ window.renderLeagues = function() {
             </div>
 
             <div id="league-content" style="min-height: 200px;">
-                <div class="loading">🏆 Rankings ကို ဆွဲယူနေသည်...</div>
+                <div class="loading">🏆 H2H Standings ကို ဆွဲယူနေသည်...</div>
             </div>
         </div>
     `;
 
-    // စဖွင့်ဖွင့်ချင်း Division 1 (A) ကို အလိုအလျောက် ပြခိုင်းမယ်
+    // စဖွင့်ဖွင့်ချင်း Division 1 (A) ကို အလိုအလျောက် ပြမည်
     setTimeout(() => { window.filterDivision('A'); }, 100);
 };
 
-// ၂။ ခလုတ်နှိပ်လိုက်ရင် Division အလိုက် Filter လုပ်ပေးမယ့် Function
+// ၂။ Division အလိုက် Table ဆောက်ပေးမည့် Function
 window.filterDivision = function(divTag) {
-    console.log("Filtering Division:", divTag);
     const content = document.getElementById('league-content');
     if (!content) return;
 
-    // Loading အရင်ပြမယ်
-    content.innerHTML = `<div class="loading" style="color:#D4AF37;">Division ${divTag} အချက်အလက်များ ရှာနေသည်...</div>`;
+    // Loading ပြမည်
+    content.innerHTML = `<div class="loading" style="color:#D4AF37;">Division ${divTag} Standings ရှာနေသည်...</div>`;
 
-    // Firestore Database ထဲက league_tag (A သို့မဟုတ် B) ကို ရှာခြင်း
+    // Database မှ ဒေတာများကို h2h_points အများဆုံးအတိုင်း စီ၍ ဖတ်မည်
     db.collection("tw_mm_tournament")
       .where("league_tag", "==", divTag)
-      .orderBy("tournament_rank", "asc")
+      .orderBy("h2h_points", "desc") // H2H Points ဖြင့် Rank စီမည်
+      .orderBy("gw_points", "desc")   // အမှတ်တူလျှင် Weekly အမှတ်ဖြင့် ထပ်စီမည်
       .onSnapshot((snapshot) => {
         if (snapshot.empty) {
-            content.innerHTML = `
-                <div style="padding:40px; color:#888;">
-                    <p>Division ${divTag} မှာ အချက်အလက် မတွေ့ပါ။</p>
-                    <small>Python Script ကနေ league_tag: "${divTag}" လို့ ပို့ထားဖို့ လိုပါတယ်။</small>
-                </div>`;
+            content.innerHTML = `<div style="padding:40px; color:#888;">ဒေတာ မရှိသေးပါ။ Python Script ကို အရင် Run ပေးပါ။</div>`;
             return;
         }
 
-        // ဇယား (Table) စတင်တည်ဆောက်ခြင်း
         let html = `
-            <h2 style="color: ${divTag === 'A' ? '#D4AF37' : '#C0C0C0'}; margin-bottom: 15px; font-size: 1.2rem;">
-                DIVISION ${divTag === 'A' ? '1' : '2'} RANKINGS
+            <h2 style="color: ${divTag === 'A' ? '#D4AF37' : '#C0C0C0'}; margin-bottom: 15px; font-size: 1.1rem; text-transform: uppercase;">
+                DIVISION ${divTag === 'A' ? '1' : '2'} H2H TABLE
             </h2>
-            <table class="gold-table" style="width:100%; border-collapse: collapse; text-align: left;">
-                <thead>
-                    <tr style="border-bottom: 2px solid #444; color: #888; font-size: 0.8rem;">
-                        <th style="padding:10px;">RANK</th>
-                        <th style="padding:10px;">TEAM & MANAGER</th>
-                        <th style="padding:10px; text-align: right;">PTS</th>
-                    </tr>
-                </thead>
-                <tbody>`;
+            <div style="overflow-x: auto;">
+                <table style="width:100%; border-collapse: collapse; text-align: center; font-size: 0.85rem; color: #fff;">
+                    <thead>
+                        <tr style="border-bottom: 2px solid #444; color: #888;">
+                            <th style="padding:10px; text-align:left;">POS</th>
+                            <th style="padding:10px; text-align:left;">TEAM</th>
+                            <th style="padding:10px;">P</th>
+                            <th style="padding:10px;">W</th>
+                            <th style="padding:10px;">D</th>
+                            <th style="padding:10px;">L</th>
+                            <th style="padding:10px; text-align:right;">PTS</th>
+                        </tr>
+                    </thead>
+                    <tbody>`;
 
-        // စဉ်စီနံပါတ်အတွက် ၁ ကနေ စသတ်မှတ်ခြင်း
-        let serialNo = 1;
+        let pos = 1;
 
         snapshot.forEach((doc) => {
             const p = doc.data();
             
-            // Division 2 (B) ဆိုလျှင် serialNo (1,2,3...) ကိုပြမည်၊ 
-            // Division 1 (A) ဆိုလျှင် rank အစစ် (1-24) အတိုင်းပြမည်
-            const displayRank = (divTag === 'B') ? serialNo : p.tournament_rank;
-
             html += `
                 <tr style="border-bottom: 1px solid #222;">
-                    <td style="padding: 15px 10px; font-weight: bold; color: ${divTag === 'A' ? '#D4AF37' : '#C0C0C0'};">
-                        #${displayRank}
+                    <td style="padding: 12px 5px; text-align:left; font-weight:bold; color: ${divTag === 'A' ? '#D4AF37' : '#C0C0C0'};">
+                        ${pos}
                     </td>
-                    <td style="padding: 15px 10px;">
+                    <td style="padding: 12px 5px; text-align:left;">
                         <div style="font-weight: bold; color:#fff;">${p.team_name}</div>
-                        <div style="font-size: 0.75rem; color: #888;">${p.manager_name}</div>
+                        <div style="font-size: 0.7rem; color: #888;">${p.manager_name}</div>
                     </td>
-                    <td style="padding: 15px 10px; text-align: right; font-weight: bold; color:#fff;">
-                        ${p.fpl_total_points.toLocaleString()}
+                    <td style="padding: 12px 5px;">${p.played || 0}</td>
+                    <td style="padding: 12px 5px; color: #00ff88;">${p.wins || 0}</td>
+                    <td style="padding: 12px 5px; color: #888;">${p.draws || 0}</td>
+                    <td style="padding: 12px 5px; color: #ff4444;">${p.losses || 0}</td>
+                    <td style="padding: 12px 5px; text-align:right; font-weight:bold; color:#D4AF37;">
+                        ${p.h2h_points || 0}
                     </td>
                 </tr>`;
-            
-            // တစ်ကြောင်းပြီးတိုင်း နံပါတ်ကို ၁ တိုးပေးသွားမည်
-            serialNo++;
+            pos++;
         });
 
-        html += `</tbody></table>`;
+        html += `</tbody></table></div>`;
         content.innerHTML = html;
         
       }, (error) => {
           console.error("Firestore Error:", error);
-          content.innerHTML = `
-            <div style="color:#ff4444; padding:20px; font-size: 0.8rem; border: 1px dashed #ff4444; border-radius: 10px;">
-                <strong>Database Error!</strong><br>
-                Rank စီရန် Index လိုအပ်နေသည်။ Browser Console (F12) ရှိ Link ကို နှိပ်၍ Index ဆောက်ပေးပါ။
-            </div>`;
+          content.innerHTML = `<div style="color:#ff4444; padding:20px;">Database Error! Please check Indexing.</div>`;
       });
 };
