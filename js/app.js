@@ -5,7 +5,7 @@ function showTab(tabId) {
     console.log("Switching to tab:", tabId);
 
     // ၁။ Navigation Items အားလုံးကို Active Class ဖြုတ်မယ်
-    // index.html အသစ်မှာ .nav-btn အစား .nav-item ကို သုံးထားလို့ ပြန်ညှိပေးထားပါတယ်
+    // Query selector ကို .nav-item (index.html မှာ သုံးထားတဲ့ class) အဖြစ် သတ်မှတ်ပါ
     const navItems = document.querySelectorAll('.nav-item');
     navItems.forEach(item => item.classList.remove('active'));
 
@@ -19,7 +19,7 @@ function showTab(tabId) {
     const mainRoot = document.getElementById('main-root');
     if (!mainRoot) return;
 
-    // Tab ပြောင်းတိုင်း အပေါ်ဆုံးကို ပြန်ပို့ပေးမယ် (Mobile User Experience အတွက်)
+    // Tab ပြောင်းတိုင်း အပေါ်ဆုံးကို ပြန်ပို့ပေးမယ် (Mobile UX အတွက်)
     window.scrollTo({ top: 0, behavior: 'smooth' });
     
     // ၄။ ရွေးချယ်လိုက်သော Tab အလိုက် Logic များ
@@ -28,11 +28,7 @@ function showTab(tabId) {
             if (typeof window.renderCommunity === "function") {
                 window.renderCommunity();
             } else {
-                mainRoot.innerHTML = `
-                    <div style="text-align:center; padding:100px 20px;">
-                        <h2 style="color:#D4AF37;">COMMUNITY</h2>
-                        <p style="color:#888;">Coming Soon...</p>
-                    </div>`;
+                mainRoot.innerHTML = `<div class="loading">🏠 Community Hub loading...</div>`;
             }
             break;
 
@@ -40,17 +36,18 @@ function showTab(tabId) {
             if (typeof window.renderLeagues === "function") {
                 window.renderLeagues(); 
             } else {
-                mainRoot.innerHTML = "<div class='loading'>🏆 Standings Loading...</div>";
-                console.error("renderLeagues function not found in tournament.js");
+                mainRoot.innerHTML = `<div class="loading">🏆 Standings loading...</div>`;
             }
             break;
 
         case 'scout':
+            // renderScoutHub သို့မဟုတ် renderScout စစ်ဆေးပါ
             if (typeof window.renderScoutHub === "function") {
                 window.renderScoutHub();
+            } else if (typeof window.renderScout === "function") {
+                window.renderScout();
             } else {
-                mainRoot.innerHTML = "<div class='loading'>🔭 Scout Hub Loading...</div>";
-                console.error("renderScoutHub function not found in scout.js");
+                mainRoot.innerHTML = `<div class="loading">🔭 Scout Hub loading...</div>`;
             }
             break;
 
@@ -58,16 +55,12 @@ function showTab(tabId) {
             if (typeof window.renderLiveHub === "function") {
                 window.renderLiveHub();
             } else {
-                mainRoot.innerHTML = `
-                    <div style="text-align:center; padding:100px 20px;">
-                        <h2 style="color:#00ff88;">LIVE HUB</h2>
-                        <p style="color:#888;">Match Day Data Coming Soon...</p>
-                    </div>`;
+                mainRoot.innerHTML = `<div class="loading">⚡ Live Hub loading...</div>`;
             }
             break;
 
         default:
-            mainRoot.innerHTML = "<div class='loading'>Error: Page Not Found</div>";
+            console.warn("Unknown tabId:", tabId);
     }
 }
 
@@ -75,14 +68,11 @@ function showTab(tabId) {
  * Firebase Auth အခြေအနေကို စောင့်ကြည့်ပြီး App ကို စတင်ခြင်း
  */
 firebase.auth().onAuthStateChanged((user) => {
-    console.log("Auth State Changed. User:", user ? user.displayName : "Logged Out");
-    
-    // Auth ကနေ User ရှိ/မရှိ စစ်ဆေးပြီးမှ Tab စပြမယ်
-    // စဖွင့်ဖွင့်ချင်း Live Hub ကို ပြချင်ရင် 'live' လို့ ပြောင်းနိုင်ပါတယ်
+    // ပထမဆုံးဝင်ဝင်ချင်းမှာ အလုပ်လုပ်စေရန်
     if (user) {
-        showTab('live');
+        showTab('live'); // Login ဝင်ထားရင် Live Hub ကို အရင်ပြမယ်
     } else {
-        showTab('community');
+        showTab('community'); // Login မရှိရင် Home ကို ပြမယ်
     }
 });
 
@@ -90,6 +80,6 @@ firebase.auth().onAuthStateChanged((user) => {
  * ၅။ Website အဆင်သင့်ဖြစ်ချိန်တွင် Initialize လုပ်ရန်
  */
 window.onload = () => {
-    console.log("TW MM Tournament App Initiali
-                zed");
+    console.log("TW MM Tournament App Re
+                ady");
 };
