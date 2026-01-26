@@ -1,134 +1,170 @@
-/* Gold & Black Theme Stylesheet */
+/* ၁။ Global Variables & Theme Setup */
 :root {
     --gold: #D4AF37;
-    --dark-bg: #0a0a0a;
-    --card-bg: #1a1a1a;
-    --text-grey: #a0a0a0;
-    --border-grey: #333;
+    --dark-bg: #000000;      /* Pure black for OLED screens */
+    --card-bg: #111111;
+    --item-bg: #1a1a1a;
+    --text-main: #ffffff;
+    --text-dim: #888888;
+    --border: #222222;
+    --fpl-green: #00ff88;
+    --nav-height: 75px;
+}
+
+* {
+    box-sizing: border-box;
+    -webkit-tap-highlight-color: transparent; /* Mobile နှိပ်ရင် အပြာရောင်ကွက်မပေါ်စေရန် */
 }
 
 body {
     background-color: var(--dark-bg);
-    color: white;
-    font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+    color: var(--text-main);
+    font-family: 'Inter', 'Segoe UI', system-ui, -apple-system, sans-serif;
     margin: 0;
+    padding-bottom: var(--nav-height); /* Nav နေရာစာ ချန်ထားရန် */
     overflow-x: hidden;
 }
 
-/* Header */
-.gold-header {
-    text-align: center;
-    padding: 40px 20px;
-    border-bottom: 2px solid var(--gold);
-    background: linear-gradient(180deg, #1a1a1a 0%, #0a0a0a 100%);
-}
-
-.gold-header h1 {
-    color: var(--gold);
-    margin: 0;
-    font-size: 2.2rem;
-    letter-spacing: 2px;
-    text-shadow: 0 0 15px rgba(212, 175, 55, 0.3);
-}
-
-/* Auth Section */
-#auth-root {
-    margin-top: 15px;
+/* ၂။ App Header (Top Section) */
+.app-header {
+    padding: 25px 20px 15px;
+    background: linear-gradient(180deg, #111 0%, transparent 100%);
     display: flex;
-    justify-content: center;
+    justify-content: space-between;
     align-items: center;
-    gap: 10px;
-}
-
-/* Navigation Tab Bar */
-.gold-nav {
-    display: flex;
-    justify-content: center;
-    background: #111;
     position: sticky;
     top: 0;
     z-index: 1000;
-    border-bottom: 1px solid var(--border-grey);
+    backdrop-filter: blur(10px);
 }
 
-.nav-btn {
+.logo {
+    font-weight: 900;
+    font-size: 1.2rem;
+    letter-spacing: -0.5px;
+    color: white;
+}
+
+.logo span {
+    color: var(--gold);
+}
+
+.auth-container {
+    background: var(--card-bg);
+    padding: 6px 14px;
+    border-radius: 30px;
+    border: 1px solid var(--border);
+    font-size: 0.8rem;
+    font-weight: bold;
+}
+
+/* ၃။ Main Content Area */
+main {
+    max-width: 600px; /* Mobile width */
+    margin: 0 auto;
+    padding: 10px 15px;
+    min-height: 80vh;
+}
+
+/* ၄။ Bottom Navigation (App Feel) */
+.bottom-nav {
+    position: fixed;
+    bottom: 0;
+    width: 100%;
+    height: var(--nav-height);
+    background: rgba(10, 10, 10, 0.95);
+    backdrop-filter: blur(20px);
+    display: flex;
+    justify-content: space-around;
+    align-items: center;
+    border-top: 1px solid var(--border);
+    z-index: 2000;
+    padding-bottom: env(safe-area-inset-bottom); /* iPhone notch space */
+}
+
+.nav-item {
     background: none;
     border: none;
-    color: var(--text-grey);
-    padding: 15px 25px;
+    color: var(--text-dim);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 5px;
+    flex: 1;
+    transition: 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.nav-icon {
+    font-size: 1.4rem;
+}
+
+.nav-label {
+    font-size: 0.65rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.nav-item.active {
+    color: var(--gold);
+    transform: translateY(-5px);
+}
+
+/* ၅။ Modern Card Design (For Tournament & Live Hub) */
+.data-card {
+    background: var(--card-bg);
+    border-radius: 16px;
+    padding: 15px;
+    margin-bottom: 12px;
+    border: 1px solid var(--border);
+    transition: 0.2s;
+}
+
+.data-card:active {
+    transform: scale(0.98);
+}
+
+/* ၆။ Loading Spinner */
+.loading {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    height: 300px;
+}
+
+.spinner {
+    width: 40px;
+    height: 40px;
+    border: 4px solid rgba(212, 175, 55, 0.1);
+    border-left-color: var(--gold);
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+    margin-bottom: 15px;
+}
+
+@keyframes spin {
+    to { transform: rotate(360deg); }
+}
+
+/* ၇။ Buttons & Inputs */
+.nav-btn { /* Division switcher style */
+    padding: 12px 24px;
+    border-radius: 50px;
+    border: none;
+    font-weight: 800;
+    font-size: 0.85rem;
     cursor: pointer;
-    font-weight: bold;
-    font-size: 0.9rem;
     transition: 0.3s;
-    border-bottom: 3px solid transparent; /* Layout မရွေ့အောင် ကြိုထည့်ထားခြင်း */
 }
 
 .nav-btn.active {
-    color: var(--gold);
-    border-bottom: 3px solid var(--gold);
-    background: rgba(212, 175, 55, 0.05);
-}
-
-/* Container */
-main {
-    max-width: 800px;
-    margin: 20px auto;
-    padding: 0 15px;
-    min-height: 60vh;
-}
-
-/* Table Style */
-.gold-table {
-    width: 100%;
-    border-collapse: collapse;
-    background: var(--card-bg);
-    margin: 20px 0;
-    border-radius: 8px;
-    overflow: hidden;
-    font-size: 0.9rem;
-}
-
-.gold-table th {
     background: var(--gold);
     color: black;
-    padding: 12px;
-    text-align: left;
-    text-transform: uppercase;
+    box-shadow: 0 5px 15px rgba(212, 175, 55, 0.3);
 }
 
-.gold-table td {
-    padding: 12px;
-    border-bottom: 1px solid var(--border-grey);
-}
-
-/* Table Row Hover Effect */
-.gold-table tr:hover {
-    background: rgba(255, 255, 255, 0.03);
-}
-
-/* Buttons */
-.tw-btn-gold {
-    background: var(--gold);
-    color: black;
-    border: none;
-    padding: 10px 20px;
-    font-weight: bold;
-    border-radius: 4px;
-    cursor: pointer;
-    transition: 0.2s;
-    text-transform: uppercase;
-}
-
-.tw-btn-gold:hover {
-    background: #f1c40f;
-    box-shadow: 0 0 10px rgba(212, 175, 55, 0.4);
-}
-
-/* Loading Spinner */
-.loading {
-    text-align: center;
-    color: var(--gold);
-    margin-top: 50px;
-    font-st
-        yle: italic;
+/* Scrollbar hide (for clean look) */
+::-webkit-scrollbar {
+    display: none;
 }
