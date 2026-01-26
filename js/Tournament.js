@@ -1,9 +1,11 @@
 // js/tournament.js
-function renderLeagues() {
+window.renderLeagues = function() {
     const mainRoot = document.getElementById('main-root');
+    if (!mainRoot) return;
+    
     mainRoot.innerHTML = `<div class="loading">🏆 Rankings ကို ဆွဲယူနေသည်...</div>`;
 
-    // Firestore listener: Data ပြောင်းတာနဲ့ Website မှာ တန်းပေါ်မယ်
+    // Collection အမည် မှန်/မမှန် ပြန်စစ်ပါ (tw_mm_tournament)
     db.collection("tw_mm_tournament")
       .orderBy("tournament_rank", "asc")
       .onSnapshot((snapshot) => {
@@ -18,7 +20,7 @@ function renderLeagues() {
                 <table class="gold-table">
                     <thead>
                         <tr>
-                            <th style="width: 50px;">Rank</th>
+                            <th>Rank</th>
                             <th>Team & Manager</th>
                             <th style="text-align: right;">Points</th>
                         </tr>
@@ -43,6 +45,6 @@ function renderLeagues() {
     }, (error) => {
         console.error("Firestore Error:", error);
         mainRoot.innerHTML = `<div class="loading" style="color:red;">Error: ${error.message}</div>`;
-    })
-        ;
-}
+    });
+    
+};
