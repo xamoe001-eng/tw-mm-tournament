@@ -64,12 +64,20 @@ window.filterDivision = function(divTag) {
                 </thead>
                 <tbody>`;
 
+        // စဉ်စီနံပါတ်အတွက် ၁ ကနေ စသတ်မှတ်ခြင်း
+        let serialNo = 1;
+
         snapshot.forEach((doc) => {
             const p = doc.data();
+            
+            // Division 2 (B) ဆိုလျှင် serialNo (1,2,3...) ကိုပြမည်၊ 
+            // Division 1 (A) ဆိုလျှင် rank အစစ် (1-24) အတိုင်းပြမည်
+            const displayRank = (divTag === 'B') ? serialNo : p.tournament_rank;
+
             html += `
                 <tr style="border-bottom: 1px solid #222;">
                     <td style="padding: 15px 10px; font-weight: bold; color: ${divTag === 'A' ? '#D4AF37' : '#C0C0C0'};">
-                        #${p.tournament_rank}
+                        #${displayRank}
                     </td>
                     <td style="padding: 15px 10px;">
                         <div style="font-weight: bold; color:#fff;">${p.team_name}</div>
@@ -79,6 +87,9 @@ window.filterDivision = function(divTag) {
                         ${p.fpl_total_points.toLocaleString()}
                     </td>
                 </tr>`;
+            
+            // တစ်ကြောင်းပြီးတိုင်း နံပါတ်ကို ၁ တိုးပေးသွားမည်
+            serialNo++;
         });
 
         html += `</tbody></table>`;
@@ -86,12 +97,10 @@ window.filterDivision = function(divTag) {
         
       }, (error) => {
           console.error("Firestore Error:", error);
-          // အကယ်၍ Index မရှိရင် Error Link ထွက်လာပါလိမ့်မယ်
           content.innerHTML = `
             <div style="color:#ff4444; padding:20px; font-size: 0.8rem; border: 1px dashed #ff4444; border-radius: 10px;">
                 <strong>Database Error!</strong><br>
                 Rank စီရန် Index လိုအပ်နေသည်။ Browser Console (F12) ရှိ Link ကို နှိပ်၍ Index ဆောက်ပေးပါ။
             </div>`;
-    
       });
 };
