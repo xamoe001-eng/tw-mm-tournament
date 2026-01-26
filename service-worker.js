@@ -1,5 +1,5 @@
-const CACHE_NAME = 'tw-mm-tournament-v1';
-const ASSETS_TO_CACHE = [
+const CACHE_NAME = 'twmm-v2';
+const ASSETS = [
   '/',
   '/index.html',
   '/css/style.css',
@@ -8,37 +8,35 @@ const ASSETS_TO_CACHE = [
   '/js/tournament.js',
   '/js/auth.js',
   '/js/community.js',
+  '/js/scout.js',
+  '/js/live-hub.js',
   '/manifest.json',
-  '/icons/icon-192.png',
-  '/icons/icon-512.png'
+  '/icon-192.png',
+  '/icon-512.png'
 ];
 
-// Service Worker ကို Install လုပ်ပြီး Assets များကို Cache ထဲထည့်ခြင်း
-self.addEventListener('install', (event) => {
+self.addEventListener('install', event => {
   event.waitUntil(
-    caches.open(CACHE_NAME).then((cache) => {
-      console.log('Caching shell assets');
-      return cache.addAll(ASSETS_TO_CACHE);
+    caches.open(CACHE_NAME).then(cache => {
+      return cache.addAll(ASSETS);
     })
   );
 });
 
-// အဟောင်းဖြစ်နေသော Cache များကို ရှင်းထုတ်ခြင်း
-self.addEventListener('activate', (event) => {
+self.addEventListener('activate', event => {
   event.waitUntil(
-    caches.keys().then((keys) => {
+    caches.keys().then(keys => {
       return Promise.all(
-        keys.filter((key) => key !== CACHE_NAME).map((key) => caches.delete(key))
+        keys.filter(key => key !== CACHE_NAME).map(key => caches.delete(key))
       );
     })
   );
 });
 
-// Network မရှိလျှင် Cache ထဲမှ ထုတ်ပြပေးခြင်း (Offline Support)
-self.addEventListener('fetch', (event) => {
+self.addEventListener('fetch', event => {
   event.respondWith(
-    caches.match(event.request).then((response) => {
-      return response || fetch(event.request);
+    caches.match(event.request).then(cacheRes => {
+      return cacheRes || fetch(event.request);
     })
   );
 }
