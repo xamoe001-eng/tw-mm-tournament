@@ -1,6 +1,6 @@
 // js/app.js
 function showTab(tabId) {
-    console.log("Attempting to show tab:", tabId); // Console မှာ စစ်ဖို့
+    console.log("Attempting to show tab:", tabId);
 
     // ၁။ Nav Buttons အားလုံးကို Active ဖြုတ်မယ်
     const buttons = document.querySelectorAll('.nav-btn');
@@ -10,25 +10,23 @@ function showTab(tabId) {
     const targetBtn = document.getElementById(`btn-${tabId}`);
     if (targetBtn) {
         targetBtn.classList.add('active');
-    } else {
-        console.error(`Button with ID btn-${tabId} not found!`);
     }
 
-    // ၃။ Content ပြောင်းမယ်
+    // ၃။ Content ပြောင်းလဲခြင်း logic
     const mainRoot = document.getElementById('main-root');
     
     if (tabId === 'community') {
         if (typeof renderCommunity === "function") {
             renderCommunity();
         } else {
-            console.error("renderCommunity function is not defined in community.js");
+            mainRoot.innerHTML = "<div class='loading'>Community Hub...</div>";
         }
     } 
     else if (tabId === 'leagues') {
+        // Tournament Function ရှိမရှိ စစ်ပြီး ခေါ်မယ်
         if (typeof renderLeagues === "function") {
-            renderLeagues();
+            renderLeagues(); 
         } else {
-            // ဒီနေရာမှာ function မရှိသေးရင် အောက်ကစာသားပေါ်လာမယ်
             mainRoot.innerHTML = "<div class='loading'>League loading function not found...</div>";
             console.error("renderLeagues function is not defined in tournament.js");
         }
@@ -38,7 +36,7 @@ function showTab(tabId) {
     }
 }
 
-// Website စဖွင့်တာနဲ့ စတင်အလုပ်လုပ်ဖို့
+// စဖွင့်ဖွင့်ချင်း Community ကို အရင်ပြထားမယ်
 document.addEventListener('DOMContentLoaded', () => {
     console.log("App Initialized");
     showTab('community');
