@@ -60,11 +60,13 @@ body {
     font-weight: bold;
     font-size: 0.9rem;
     transition: 0.3s;
+    border-bottom: 3px solid transparent; /* Layout မရွေ့အောင် ကြိုထည့်ထားခြင်း */
 }
 
 .nav-btn.active {
     color: var(--gold);
     border-bottom: 3px solid var(--gold);
+    background: rgba(212, 175, 55, 0.05);
 }
 
 /* Container */
@@ -75,14 +77,15 @@ main {
     min-height: 60vh;
 }
 
-/* Table Style (League Standings အတွက်) */
+/* Table Style */
 .gold-table {
     width: 100%;
     border-collapse: collapse;
     background: var(--card-bg);
-    margin-bottom: 30px;
+    margin: 20px 0;
     border-radius: 8px;
     overflow: hidden;
+    font-size: 0.9rem;
 }
 
 .gold-table th {
@@ -90,11 +93,17 @@ main {
     color: black;
     padding: 12px;
     text-align: left;
+    text-transform: uppercase;
 }
 
 .gold-table td {
     padding: 12px;
     border-bottom: 1px solid var(--border-grey);
+}
+
+/* Table Row Hover Effect */
+.gold-table tr:hover {
+    background: rgba(255, 255, 255, 0.03);
 }
 
 /* Buttons */
@@ -107,17 +116,19 @@ main {
     border-radius: 4px;
     cursor: pointer;
     transition: 0.2s;
+    text-transform: uppercase;
 }
 
 .tw-btn-gold:hover {
     background: #f1c40f;
-    transform: scale(1.02);
+    box-shadow: 0 0 10px rgba(212, 175, 55, 0.4);
 }
 
 /* Loading Spinner */
 .loading {
     text-align: center;
     color: var(--gold);
-    margin
-      -top: 50px;
+    margin-top: 50px;
+    font-st
+        yle: italic;
 }
