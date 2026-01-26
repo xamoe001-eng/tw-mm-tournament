@@ -9,7 +9,8 @@
     <meta name="theme-color" content="#D4AF37">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    <link rel="apple-touch-icon" href="icons/icon-192.png">
+    
+    <link rel="apple-touch-icon" href="icon-192.png">
 
     <link rel="stylesheet" href="css/style.css">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap" rel="stylesheet">
@@ -62,9 +63,10 @@
     <script>
         if ('serviceWorker' in navigator) {
             window.addEventListener('load', () => {
-                navigator.serviceWorker.register('/service-worker.js')
-                    .then(reg => console.log('SW Registered!', reg))
-                    .catch(err => console.log('SW Registration Failed:', err));
+                // service-worker.js က အပြင်မှာရှိနေရပါမယ်
+                navigator.serviceWorker.register('service-worker.js')
+                    .then(reg => console.log('PWA: Service Worker Registered!', reg))
+                    .catch(err => console.log('PWA: Service Worker Failed!', err));
             });
         }
     </script>
