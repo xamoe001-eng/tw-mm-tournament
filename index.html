@@ -17,6 +17,7 @@
     <nav class="gold-nav">
         <button id="btn-community" class="nav-btn active" onclick="showTab('community')">COMMUNITY</button>
         <button id="btn-leagues" class="nav-btn" onclick="showTab('leagues'); if(typeof renderLeagues === 'function') { renderLeagues(); }">LEAGUES</button>
+        <button id="btn-scout" class="nav-btn" onclick="showTab('scout'); if(typeof renderScoutHub === 'function') { renderScoutHub(); }">SCOUTS</button>
         <button id="btn-live" class="nav-btn" onclick="showTab('live')">LIVE HUB</button>
     </nav>
 
@@ -29,12 +30,10 @@
     <script src="https://www.gstatic.com/firebasejs/9.1.1/firebase-auth-compat.js"></script>
 
     <script src="js/config.js"></script>
-    
     <script src="js/auth.js"></script>
     <script src="js/community.js"></script>
     <script src="js/tournament.js"></script>
-    <script src="js/live-hub.js"></script>
-    
+    <script src="js/scout.js"></script> <script src="js/live-hub.js"></script>
     <script src="js/app.js"></script>
 
 </body>
