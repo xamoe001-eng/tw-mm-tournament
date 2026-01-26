@@ -5,7 +5,7 @@ import os
 # FPL API URL
 FPL_API = "https://fantasy.premierleague.com/api/leagues-classic/400231/standings/"
 
-# Scout အဖြစ် သတ်မှတ်ချင်သော Manager များ၏ Entry ID စာရင်း (ဒီမှာ ID တွေထည့်ပါ)
+# Scout အဖြစ် သတ်မှတ်ချင်သော Manager များ၏ Entry ID စာရင်း (ဒီမှာ ID အမှန်တွေလဲလိုက်ပါ)
 SCOUT_IDS = [123456, 789012, 345678] 
 
 def sync_scouts():
@@ -23,7 +23,6 @@ def sync_scouts():
         for idx, player in enumerate(sorted_players):
             entry_id = player['entry']
             
-            # ငါတို့သတ်မှတ်ထားတဲ့ ID စာရင်းထဲမှာ ပါသလား စစ်မယ်
             if entry_id in SCOUT_IDS:
                 scout_list.append({
                     "team_name": player['entry_name'],
@@ -33,7 +32,7 @@ def sync_scouts():
                     "is_scout": True
                 })
 
-        # JSON ဖိုင်အဖြစ် သိမ်းမယ် (Root Folder ထဲရောက်အောင် ../ နဲ့ သိမ်းပါ)
+        # Root Folder ထဲသို့ scout_data.json သိမ်းဆည်းခြင်း
         output_path = os.path.join(os.path.dirname(__file__), '../scout_data.json')
         with open(output_path, 'w', encoding='utf-8') as f:
             json.dump(scout_list, f, indent=4)
@@ -45,4 +44,4 @@ def sync_scouts():
 
 if __name__ == "__main__":
     sync_sc
-  outs()
+    outs()
