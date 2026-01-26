@@ -1,18 +1,15 @@
-// js/app.js
+// js/app.js (အချောသတ်ပြင်ဆင်မှု)
 function showTab(tabId) {
     console.log("Attempting to show tab:", tabId);
 
-    // ၁။ Nav Buttons အားလုံးကို Active ဖြုတ်မယ်
     const buttons = document.querySelectorAll('.nav-btn');
     buttons.forEach(btn => btn.classList.remove('active'));
 
-    // ၂။ နှိပ်လိုက်တဲ့ Button ကို Active လုပ်မယ်
     const targetBtn = document.getElementById(`btn-${tabId}`);
     if (targetBtn) {
         targetBtn.classList.add('active');
     }
 
-    // ၃။ Content ပြောင်းလဲခြင်း logic
     const mainRoot = document.getElementById('main-root');
     
     if (tabId === 'community') {
@@ -23,11 +20,11 @@ function showTab(tabId) {
         }
     } 
     else if (tabId === 'leagues') {
-        // Tournament Function ရှိမရှိ စစ်ပြီး ခေါ်မယ်
-        if (typeof renderLeagues === "function") {
-            renderLeagues(); 
+        // window object ထဲမှာ function ရှိမရှိ စစ်တာက ပိုသေချာပါတယ်
+        if (typeof window.renderLeagues === "function") {
+            window.renderLeagues(); 
         } else {
-            mainRoot.innerHTML = "<div class='loading'>League loading function not found...</div>";
+            mainRoot.innerHTML = "<div class='loading'>System loading... Please refresh.</div>";
             console.error("renderLeagues function is not defined in tournament.js");
         }
     } 
@@ -36,9 +33,9 @@ function showTab(tabId) {
     }
 }
 
-// စဖွင့်ဖွင့်ချင်း Community ကို အရင်ပြထားမယ်
-document.addEventListener('DOMContentLoaded', () => {
-    console.log("App Initialized");
+// ဖြည့်စွက်ချက်: window.onload ကို သုံးခြင်းဖြင့် ဖိုင်အားလုံး load ဖြစ်ပြီးမှ စတင်စေပါမယ်
+window.onload = () => {
+    console.log("All files loaded. Initializing app...");
     showTab('community');
-
-});
+    
+};
