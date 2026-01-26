@@ -4,24 +4,18 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>TW MM Tournament - Gold Edition</title>
-    
     <link rel="stylesheet" href="css/style.css">
-
-    <script src="https://www.gstatic.com/firebasejs/9.1.1/firebase-app-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/9.1.1/firebase-firestore-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/9.1.1/firebase-auth-compat.js"></script>
 </head>
 <body>
 
     <header class="gold-header">
         <h1>TW MM TOURNAMENT</h1>
-        <div id="auth-root">
-            </div>
+        <div id="auth-root"></div>
     </header>
 
     <nav class="gold-nav">
         <button id="btn-community" class="nav-btn active" onclick="showTab('community')">COMMUNITY</button>
-        <button id="btn-leagues" class="nav-btn" onclick="showTab('leagues')">LEAGUES</button>
+        <button id="btn-leagues" class="nav-btn" onclick="showTab('leagues'); if(typeof renderLeagues === 'function') renderLeagues();">LEAGUES</button>
         <button id="btn-live" class="nav-btn" onclick="showTab('live')">LIVE HUB</button>
     </nav>
 
@@ -29,12 +23,19 @@
         <div class="loading">Loading TW Hub...</div>
     </main>
 
+    <script src="https://www.gstatic.com/firebasejs/9.1.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.1.1/firebase-firestore-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.1.1/firebase-auth-compat.js"></script>
+
     <script src="js/config.js"></script>
+    
     <script src="js/auth.js"></script>
     <script src="js/community.js"></script>
     <script src="js/tournament.js"></script>
     <script src="js/live-hub.js"></script>
+    
     <script src="js/app.js"></script>
 
 </body>
-</html>
+</
+    html>
