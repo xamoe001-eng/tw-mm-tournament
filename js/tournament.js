@@ -1,34 +1,40 @@
 // ၁။ Tournament Standings စာမျက်နှာကို စတင်ဖန်တီးခြင်း
 /**
 /**
- * ၁။ Tournament Standings Render လုပ်ခြင်း
+/**
+ * ၁။ Tournament Standings စာမျက်နှာကို စတင်ဖန်တီးခြင်း
  */
 window.renderLeagues = function() {
     const mainRoot = document.getElementById('main-root');
     if (!mainRoot) return;
 
     mainRoot.innerHTML = `
-        <div style="padding: 12px; max-width: 500px; margin: 0 auto;">
-            <div style="display: flex; background: #161616; padding: 4px; border-radius: 50px; margin-bottom: 15px; border: 1px solid #222;">
+        <div style="padding: 12px; max-width: 500px; margin: 0 auto; font-family: 'Inter', sans-serif;">
+            <div style="display: flex; background: #161616; padding: 4px; border-radius: 50px; margin-bottom: 18px; border: 1px solid #222; box-shadow: 0 4px 10px rgba(0,0,0,0.3);">
                 <button id="btn-divA" onclick="window.filterDivision('A')" 
-                    style="flex: 1; padding: 10px; border: none; border-radius: 40px; font-weight: 800; cursor: pointer; transition: 0.3s; background: #D4AF37; color: #000; font-size: 0.85rem;">
+                    style="flex: 1; padding: 10px; border: none; border-radius: 40px; font-weight: 800; cursor: pointer; transition: all 0.3s ease; background: #D4AF37; color: #000; font-size: 0.8rem; letter-spacing: 1px;">
                     DIVISION 1
                 </button>
                 <button id="btn-divB" onclick="window.filterDivision('B')" 
-                    style="flex: 1; padding: 10px; border: none; border-radius: 40px; font-weight: 800; cursor: pointer; transition: 0.3s; background: transparent; color: #666; font-size: 0.85rem;">
+                    style="flex: 1; padding: 10px; border: none; border-radius: 40px; font-weight: 800; cursor: pointer; transition: all 0.3s ease; background: transparent; color: #666; font-size: 0.8rem; letter-spacing: 1px;">
                     DIVISION 2
                 </button>
             </div>
 
             <div id="league-content">
-                <div class="loading" style="text-align:center; padding:40px;">
-                    <div class="spinner"></div>
-                    <p style="color:#555; font-size:0.75rem; margin-top:10px; letter-spacing: 1px;">LOADING DATA...</p>
+                <div style="text-align:center; padding:50px;">
+                    <div class="spinner" style="border: 3px solid #333; border-top: 3px solid #D4AF37; border-radius: 50%; width: 30px; height: 30px; animation: spin 1s linear infinite; margin: 0 auto;"></div>
+                    <p style="color:#555; font-size:0.7rem; margin-top:12px; letter-spacing: 1px; font-weight: 600;">FETCHING DATA...</p>
                 </div>
             </div>
         </div>
+
+        <style>
+            @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+        </style>
     `;
 
+    // စတင်ချိန်တွင် Division A ကို အလိုအလျောက်ပြသမည်
     setTimeout(() => { window.filterDivision('A'); }, 100);
 };
 
@@ -42,7 +48,7 @@ window.filterDivision = function(divTag) {
 
     if (!content) return;
 
-    // UI Toggle
+    // UI Feedback (Buttons Active State)
     if (divTag === 'A') {
         if(btnA) { btnA.style.background = '#D4AF37'; btnA.style.color = '#000'; }
         if(btnB) { btnB.style.background = 'transparent'; btnB.style.color = '#666'; }
@@ -51,22 +57,27 @@ window.filterDivision = function(divTag) {
         if(btnA) { btnA.style.background = 'transparent'; btnA.style.color = '#666'; }
     }
 
-    if (typeof db === 'undefined') return;
+    // Firestore `db` check
+    if (typeof db === 'undefined') {
+        content.innerHTML = `<div style="color:#ff4d4d; text-align:center; padding:20px; font-size:0.8rem;">⚠️ Configuration Error: DB Not Found.</div>`;
+        return;
+    }
 
+    // Real-time Firestore Listener
     db.collection("tw_mm_tournament")
       .where("league_tag", "==", divTag)
       .orderBy("h2h_points", "desc") 
       .orderBy("gw_points", "desc") 
       .onSnapshot((snapshot) => {
         if (snapshot.empty) {
-            content.innerHTML = `<div style="text-align:center; padding:50px; color:#444; font-size: 0.8rem;">NO DATA AVAILABLE</div>`;
+            content.innerHTML = `<div style="text-align:center; padding:60px; color:#444; font-size: 0.8rem; font-weight: 600;">NO STANDINGS RECORDED YET</div>`;
             return;
         }
 
         let html = `
-            <div style="display: flex; justify-content: space-between; padding: 0 10px 8px; font-size: 0.65rem; color: #444; font-weight: 800; text-transform: uppercase; letter-spacing: 0.5px;">
-                <span># TEAM</span>
-                <span>P - W - D - L / PTS</span>
+            <div style="display: flex; justify-content: space-between; padding: 0 12px 10px; font-size: 0.6rem; color: #444; font-weight: 900; text-transform: uppercase; letter-spacing: 1px;">
+                <span># TEAM INFO</span>
+                <span>MATCHES / PTS</span>
             </div>
         `;
 
@@ -76,26 +87,26 @@ window.filterDivision = function(divTag) {
             const rankColor = pos === 1 ? '#D4AF37' : (pos === 2 ? '#C0C0C0' : (pos === 3 ? '#CD7F32' : '#fff'));
 
             html += `
-                <div style="background: linear-gradient(90deg, #111 0%, #0a0a0a 100%); margin-bottom: 6px; border-radius: 10px; padding: 10px 12px; display: flex; align-items: center; border: 1px solid #1a1a1a;">
-                    <div style="width: 28px; font-weight: 900; font-size: 0.95rem; color: ${rankColor}; text-align: left;">
+                <div style="background: linear-gradient(135deg, #121212 0%, #080808 100%); margin-bottom: 8px; border-radius: 12px; padding: 12px 14px; display: flex; align-items: center; border: 1px solid #1a1a1a; box-shadow: 0 2px 5px rgba(0,0,0,0.2);">
+                    <div style="width: 32px; font-weight: 900; font-size: 1rem; color: ${rankColor}; text-align: left; font-family: 'Inter', sans-serif;">
                         ${pos}
                     </div>
                     
-                    <div style="flex: 1; min-width: 0; padding-right: 10px;">
-                        <div style="font-weight: 700; color: #fff; font-size: 0.85rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; letter-spacing: 0.2px;">
+                    <div style="flex: 1; min-width: 0; padding-right: 8px;">
+                        <div style="font-weight: 800; color: #fff; font-size: 0.85rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; letter-spacing: 0.3px; text-transform: uppercase;">
                             ${p.team_name}
                         </div>
-                        <div style="font-size: 0.65rem; color: #555; margin-top: 1px; font-weight: 500;">
+                        <div style="font-size: 0.65rem; color: #555; margin-top: 2px; font-weight: 600;">
                             ${p.manager_name}
                         </div>
                     </div>
 
-                    <div style="text-align: right;">
-                        <div style="font-size: 0.6rem; color: #444; margin-bottom: 1px; font-family: monospace; font-weight: bold;">
-                            ${p.played || 0} - ${p.wins || 0} - ${p.draws || 0} - ${p.losses || 0}
+                    <div style="text-align: right; min-width: 85px;">
+                        <div style="font-size: 0.6rem; color: #444; margin-bottom: 2px; font-weight: 800; letter-spacing: 0.5px;">
+                            ${p.played || 0}P ${p.wins || 0}W ${p.draws || 0}D ${p.losses || 0}L
                         </div>
-                        <div style="font-weight: 900; font-size: 1rem; color: ${divTag === 'A' ? '#D4AF37' : '#C0C0C0'};">
-                            ${p.h2h_points || 0}<span style="font-size: 0.55rem; margin-left: 2px; opacity: 0.6;">PTS</span>
+                        <div style="font-weight: 900; font-size: 1.1rem; color: ${divTag === 'A' ? '#D4AF37' : '#C0C0C0'}; display: flex; align-items: baseline; justify-content: flex-end;">
+                            ${p.h2h_points || 0}<span style="font-size: 0.55rem; margin-left: 3px; font-weight: 700; color: #444;">PTS</span>
                         </div>
                     </div>
                 </div>
@@ -106,7 +117,11 @@ window.filterDivision = function(divTag) {
         content.innerHTML = html;
       }, (error) => {
           console.error("Firestore Error:", error);
-          content.innerHTML = `<div style="color:#ff4d4d; padding:20px; font-size:0.75rem; text-align:center; background: rgba(255,0,0,0.05); border-radius: 10px;">⚠️ Please create Firestore Index in Firebase Console.</div>`;
-          
+          content.innerHTML = `
+            <div style="color:#ff4d4d; padding:25px; font-size:0.75rem; text-align:center; background: rgba(255,0,0,0.03); border-radius: 15px; border: 1px dashed rgba(255,0,0,0.2);">
+                <p style="margin:0; font-weight:800;">⚠️ DATABASE SYNC ERROR</p>
+                <p style="margin:5px 0 0; color:#666; font-weight:500;">Please ensure Firestore Indexes are deployed.</p>
+            </div>`
+              ;
       });
 };
