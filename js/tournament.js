@@ -31,17 +31,21 @@ window.filterDivision = function(divTag) {
     const content = document.getElementById('league-content');
     if (!content) return;
 
-    // Loading ပြမည်
     content.innerHTML = `<div class="loading" style="color:#D4AF37;">Division ${divTag} Standings ရှာနေသည်...</div>`;
 
-    // Database မှ ဒေတာများကို h2h_points အများဆုံးအတိုင်း စီ၍ ဖတ်မည်
+    // Button အရောင်များ ပြောင်းလဲခြင်း
+    document.getElementById('btn-divA').style.opacity = (divTag === 'A') ? '1' : '0.5';
+    document.getElementById('btn-divB').style.opacity = (divTag === 'B') ? '1' : '0.5';
+
+    // Query Logic - h2h_points ဖြင့် အဓိကစီမည်
+    // သတိပေးချက် - Console ထဲက Index Link ကို မဖြစ်မနေ နှိပ်ပေးရန် လိုအပ်သည်
     db.collection("tw_mm_tournament")
       .where("league_tag", "==", divTag)
-      .orderBy("h2h_points", "desc") // H2H Points ဖြင့် Rank စီမည်
-      .orderBy("gw_points", "desc")   // အမှတ်တူလျှင် Weekly အမှတ်ဖြင့် ထပ်စီမည်
+      .orderBy("h2h_points", "desc") 
+      .orderBy("gw_points", "desc") 
       .onSnapshot((snapshot) => {
         if (snapshot.empty) {
-            content.innerHTML = `<div style="padding:40px; color:#888;">ဒေတာ မရှိသေးပါ။ Python Script ကို အရင် Run ပေးပါ။</div>`;
+            content.innerHTML = `<div style="padding:40px; color:#888;">ဒေတာ မရှိသေးပါ။ Python ကို GW 23 ဖြင့် အရင် Run ပေးပါ။</div>`;
             return;
         }
 
@@ -52,31 +56,29 @@ window.filterDivision = function(divTag) {
             <div style="overflow-x: auto;">
                 <table style="width:100%; border-collapse: collapse; text-align: center; font-size: 0.85rem; color: #fff;">
                     <thead>
-                        <tr style="border-bottom: 2px solid #444; color: #888;">
+                        <tr style="border-bottom: 2px solid #444; color: #888; font-size: 0.7rem;">
                             <th style="padding:10px; text-align:left;">POS</th>
                             <th style="padding:10px; text-align:left;">TEAM</th>
-                            <th style="padding:10px;">P</th>
-                            <th style="padding:10px;">W</th>
-                            <th style="padding:10px;">D</th>
-                            <th style="padding:10px;">L</th>
+                            <th style="padding:5px;">P</th>
+                            <th style="padding:5px;">W</th>
+                            <th style="padding:5px;">D</th>
+                            <th style="padding:5px;">L</th>
                             <th style="padding:10px; text-align:right;">PTS</th>
                         </tr>
                     </thead>
                     <tbody>`;
 
         let pos = 1;
-
         snapshot.forEach((doc) => {
             const p = doc.data();
-            
             html += `
                 <tr style="border-bottom: 1px solid #222;">
                     <td style="padding: 12px 5px; text-align:left; font-weight:bold; color: ${divTag === 'A' ? '#D4AF37' : '#C0C0C0'};">
                         ${pos}
                     </td>
                     <td style="padding: 12px 5px; text-align:left;">
-                        <div style="font-weight: bold; color:#fff;">${p.team_name}</div>
-                        <div style="font-size: 0.7rem; color: #888;">${p.manager_name}</div>
+                        <div style="font-weight: bold; color:#fff; font-size: 0.85rem;">${p.team_name}</div>
+                        <div style="font-size: 0.65rem; color: #777;">${p.manager_name}</div>
                     </td>
                     <td style="padding: 12px 5px;">${p.played || 0}</td>
                     <td style="padding: 12px 5px; color: #00ff88;">${p.wins || 0}</td>
@@ -94,6 +96,11 @@ window.filterDivision = function(divTag) {
         
       }, (error) => {
           console.error("Firestore Error:", error);
-          content.innerHTML = `<div style="color:#ff4444; padding:20px;">Database Error! Please check Indexing.</div>`;
+          // Error ဖြစ်လျှင် Index ဆောက်ရန် Link ကို Console မှာကြည့်ရန် ညွှန်ကြားချက်ပြမည်
+          content.innerHTML = `
+            <div style="color:#ff4444; padding:20px; font-size:0.8rem;">
+                <p>⚠️ Database Index လိုအပ်နေပါသည်။</p>
+                <p style="color:#888;">Browser Console (F12) ထဲက Link ကိုနှိပ်ပြီး Index ဆောက်ပေးပါခင်ဗျာ။</p>
+            </div>`;
       });
 };
