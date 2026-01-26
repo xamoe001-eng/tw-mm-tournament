@@ -6,7 +6,6 @@ import os
 # ၁။ Firebase ကို ချိတ်ဆက်ရန် ပြင်ဆင်ခြင်း
 def initialize_firebase():
     if not firebase_admin._apps:
-        # serviceAccountKey.json ဖိုင်သည် scripts/ folder ထဲတွင် ရှိနေရမည်
         cred_path = os.path.join(os.path.dirname(__file__), 'serviceAccountKey.json')
         try:
             cred = credentials.Certificate(cred_path)
@@ -18,17 +17,18 @@ def initialize_firebase():
 
 db = initialize_firebase()
 
-# ၂။ Tournament Configuration (League A/B ၂၄ သင်းစီ၊ စုစုပေါင်း ၄၈ သင်း)
+# ၂။ Tournament Configuration
 LEAGUE_ID = "400231"
 FPL_API = "https://fantasy.premierleague.com/api/"
 TOTAL_OFFICIALS = 48 
+START_GW = 24  # Tournament စတင်မည့် Gameweek
 
 def sync_data():
     if not db:
         print("Firebase database connection failed.")
         return
 
-    print("--- FPL Sync Process Started ---")
+    print("--- FPL Sync & Fixture Generation Started ---")
     
     # FPL API မှ Standings ကို ဆွဲယူခြင်း
     try:
@@ -39,58 +39,85 @@ def sync_data():
         print(f"Error fetching data from FPL: {e}")
         return
 
-    # အမှတ်အများဆုံးအတိုင်း Ranking စီခြင်း (Tie-break အတွက် Rank ကိုသုံးသည်)
+    # အမှတ်အများဆုံးအတိုင်း Ranking စီခြင်း
     sorted_players = sorted(all_players, key=lambda x: (-x['total'], x['rank']))
 
     batch = db.batch()
-    print(f"Syncing {len(sorted_players)} players to Firebase...")
+    official_list = [] # Fixtures ထုတ်ရန်အတွက် သိမ်းထားမည်
 
     for idx, player in enumerate(sorted_players):
         entry_id = str(player['entry'])
         current_rank = idx + 1
-        
-        # Official Status & League Tagging Logic
         is_official = current_rank <= TOTAL_OFFICIALS
         
         league_tag = "General"
-        playoff_seed = "Not Qualified"
-        
         if is_official:
-            # Rank 1-24 သည် League A၊ Rank 25-48 သည် League B
             league_tag = "A" if current_rank <= 24 else "B"
-            
-            # Playoff Seeding Logic (Top 16 က Bye ရမည်)
-            if current_rank <= 16:
-                playoff_seed = "Top 16 (Bye to Round of 32)"
-            else:
-                playoff_seed = f"Round 1 (Seed {current_rank})"
 
-        # Firebase ထဲ သိမ်းမည့် Data ပုံစံ
         data = {
+            "fpl_id": player['entry'],
             "manager_name": player['player_name'],
             "team_name": player['entry_name'],
             "fpl_total_points": player['total'],
             "gw_points": player['event_total'],
-            "overall_rank": player['rank'],
             "tournament_rank": current_rank,
             "is_official": is_official,
             "league_tag": league_tag,
-            "playoff_seed": playoff_seed,
             "last_updated": firestore.SERVER_TIMESTAMP
         }
 
-        # Document တစ်ခုချင်းစီအတွက် Batch ထဲထည့်ခြင်း
+        if is_official:
+            official_list.append(data)
+
         doc_ref = db.collection("tw_mm_tournament").document(entry_id)
         batch.set(doc_ref, data, merge=True)
 
-    # Database ထဲသို့ တစ်ပြိုင်နက် Update လုပ်ခြင်း
+    # ၃။ Fixtures Generation Logic (League & FA Cup)
+    generate_fixtures(official_list)
+
     try:
         batch.commit()
-        print(f"--- Sync Success! {TOTAL_OFFICIALS} Officials Updated ---")
+        print(f"--- Sync Success! Data & Fixtures Updated ---")
     except Exception as e:
         print(f"Error committing to Firebase: {e}")
 
-# Script ကို စတင် Run သော နေရာ
-if __name__ == "__main__":
+def generate_fixtures(players):
+    """ Division 1, 2 နှင့် FA Cup ပွဲစဉ်များကို အလိုအလျောက် တည်ပေးခြင်း """
+    div_a = [p for p in players if p['league_tag'] == 'A']
+    div_b = [p for p in players if p['league_tag'] == 'B']
     
+    # --- Division A H2H (12 Matches) ---
+    for i in range(0, len(div_a), 2):
+        p1, p2 = div_a[i], div_a[i+1]
+        fix_id = f"gw{START_GW}_divA_m{i}"
+        upload_fixture(fix_id, "league", "A", p1, p2)
+
+    # --- Division B H2H (12 Matches) ---
+    for i in range(0, len(div_b), 2):
+        p1, p2 = div_b[i], div_b[i+1]
+        fix_id = f"gw{START_GW}_divB_m{i}"
+        upload_fixture(fix_id, "league", "B", p1, p2)
+
+    # --- TW FA Cup Playoff (24 Matches - Div A vs Div B) ---
+    # Div A No.1 vs Div B No.24 စသဖြင့် တွဲပေးခြင်း
+    for i in range(24):
+        p1 = div_a[i]
+        p2 = div_b[23 - i]
+        fix_id = f"gw{START_GW}_fa_m{i}"
+        upload_fixture(fix_id, "fa_cup", "Mixed", p1, p2)
+
+def upload_fixture(fix_id, match_type, div, p1, p2):
+    """ Firebase ထဲသို့ ပွဲစဉ်ဒေတာ ပို့ပေးခြင်း """
+    doc_ref = db.collection("fixtures").document(fix_id)
+    doc_ref.set({
+        "fixture_id": fix_id,
+        "type": match_type,
+        "division": div,
+        "gameweek": START_GW,
+        "home": {"name": p1['team_name'], "id": p1['fpl_id'], "manager": p1['manager_name']},
+        "away": {"name": p2['team_name'], "id": p2['fpl_id'], "manager": p2['manager_name']},
+        "status": "upcoming"
+    }, merge=True)
+
+if __name__ == "__main__":
     sync_data()
