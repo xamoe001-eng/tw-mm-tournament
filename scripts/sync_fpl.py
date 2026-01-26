@@ -21,7 +21,7 @@ db = initialize_firebase()
 LEAGUE_ID = "400231"
 FPL_API = "https://fantasy.premierleague.com/api/"
 TOTAL_OFFICIALS = 48 
-START_GW = 24  # ပြိုင်ပွဲစတင်သည့် GW
+START_GW = 23  # ပြိုင်ပွဲစတင်သည့် GW
 
 def sync_data():
     if not db: return
