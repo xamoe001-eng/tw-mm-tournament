@@ -1,10 +1,11 @@
 /**
- * Tab Switching Logic - Page တစ်ခုချင်းစီကို ချိတ်ဆက်ပေးခြင်း
+ * Tab Navigation Logic
+ * နှိပ်မရတဲ့ပြဿနာကို ဖြေရှင်းရန် window object ထဲသို့ တိုက်ရိုက်ထည့်သွင်းခြင်း
  */
 window.showTab = function(tabId) {
-    console.log("Navigating to:", tabId);
+    console.log("Switching to tab:", tabId);
 
-    // ၁။ Navigation UI Update: အရင် Active ဖြစ်နေတာတွေကို ဖြုတ်ပြီး အသစ်ကို Active လုပ်မယ်
+    // ၁။ UI ပိုင်း ပြောင်းလဲခြင်း (Active Class)
     const navItems = document.querySelectorAll('.nav-item');
     navItems.forEach(item => item.classList.remove('active'));
 
@@ -17,16 +18,13 @@ window.showTab = function(tabId) {
     const mainRoot = document.getElementById('main-root');
     if (!mainRoot) return;
 
-    // Mobile UX အတွက် Tab ပြောင်းတိုင်း အပေါ်ဆုံးကို Smooth ဖြစ်အောင် ပို့ပေးမည်
-    window.scrollTo({ top: 0, behavior: 'smooth' });
-
-    // ၃။ သက်ဆိုင်ရာ JS ဖိုင်များထဲက Rendering Function များကို ခေါ်ယူခြင်း
+    // ၃။ Tab တစ်ခုချင်းစီအလိုက် Function များကို ခေါ်ယူခြင်း
     switch(tabId) {
         case 'community':
             if (typeof window.renderCommunity === "function") {
                 window.renderCommunity();
             } else {
-                mainRoot.innerHTML = `<div class="loading">🏠 Community Page Loading...</div>`;
+                mainRoot.innerHTML = `<div class="loading">🏠 Community Loading...</div>`;
             }
             break;
 
@@ -34,12 +32,12 @@ window.showTab = function(tabId) {
             if (typeof window.renderLeagues === "function") {
                 window.renderLeagues();
             } else {
-                mainRoot.innerHTML = `<div class="loading">🏆 Standings Data Loading...</div>`;
+                mainRoot.innerHTML = `<div class="loading">🏆 Standings Loading...</div>`;
             }
             break;
 
         case 'scout':
-            // scout.js ထဲမှာ renderScoutHub ဒါမှမဟုတ် renderScout လို့ ပေးထားတာကို စစ်ဆေးခေါ်ယူမည်
+            // scout.js ထဲက function နာမည်ကို စစ်ဆေးခေါ်ယူခြင်း
             if (typeof window.renderScoutHub === "function") {
                 window.renderScoutHub();
             } else if (typeof window.renderScout === "function") {
@@ -53,29 +51,27 @@ window.showTab = function(tabId) {
             if (typeof window.renderLiveHub === "function") {
                 window.renderLiveHub();
             } else {
-                mainRoot.innerHTML = `<div class="loading">⚡ Live Match Hub Loading...</div>`;
+                mainRoot.innerHTML = `<div class="loading">⚡ Live Hub Loading...</div>`;
             }
             break;
-
-        default:
-            console.warn("Unknown tabId encountered:", tabId);
     }
+
+    // Tab ပြောင်းတိုင်း အပေါ်ဆုံးသို့ ပြန်တက်ရန်
+    window.scrollTo({ top: 0, behavior: 'smooth' });
 };
 
 /**
- * Firebase Auth အခြေအနေကို စောင့်ကြည့်ပြီး App ကို စတင်ခြင်း
+ * App ကို စတင်ခြင်း (Auth State)
  */
 firebase.auth().onAuthStateChanged((user) => {
-    // Login ဝင်ထားလျှင် Live Hub ကို အရင်ပြမည်၊ မဟုတ်လျှင် Community ပြမည်
+    console.log("Auth state changed, starting app...");
     if (user) {
-        showTab('live');
+        window.showTab('live');
     } else {
-        showTab('community');
+        window.showTab('community');
     }
 });
 
-// App ready status log
 window.onload = () => {
-    console.log("TW MM App: Global scripts loaded and re
-                ady.");
+    console.log("All scripts loaded. Application ready.");
 };
