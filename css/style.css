@@ -8,12 +8,13 @@
     --text-dim: #888888;
     --border: #222222;
     --fpl-green: #00ff88;
+    --danger: #ff4d4d;
     --nav-height: 75px;
 }
 
 * {
     box-sizing: border-box;
-    -webkit-tap-highlight-color: transparent; /* Mobile နှိပ်ရင် အပြာရောင်ကွက်မပေါ်စေရန် */
+    -webkit-tap-highlight-color: transparent;
 }
 
 body {
@@ -21,7 +22,7 @@ body {
     color: var(--text-main);
     font-family: 'Inter', 'Segoe UI', system-ui, -apple-system, sans-serif;
     margin: 0;
-    padding-bottom: var(--nav-height); /* Nav နေရာစာ ချန်ထားရန် */
+    padding-bottom: var(--nav-height);
     overflow-x: hidden;
 }
 
@@ -56,17 +57,19 @@ body {
     border: 1px solid var(--border);
     font-size: 0.8rem;
     font-weight: bold;
+    color: var(--gold);
+    cursor: pointer;
 }
 
 /* ၃။ Main Content Area */
 main {
-    max-width: 600px; /* Mobile width */
+    max-width: 600px;
     margin: 0 auto;
     padding: 10px 15px;
     min-height: 80vh;
 }
 
-/* ၄။ Bottom Navigation (App Feel) */
+/* ၄။ Bottom Navigation */
 .bottom-nav {
     position: fixed;
     bottom: 0;
@@ -79,7 +82,7 @@ main {
     align-items: center;
     border-top: 1px solid var(--border);
     z-index: 2000;
-    padding-bottom: env(safe-area-inset-bottom); /* iPhone notch space */
+    padding-bottom: env(safe-area-inset-bottom);
 }
 
 .nav-item {
@@ -94,10 +97,7 @@ main {
     transition: 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
-.nav-icon {
-    font-size: 1.4rem;
-}
-
+.nav-icon { font-size: 1.4rem; }
 .nav-label {
     font-size: 0.65rem;
     font-weight: 700;
@@ -110,21 +110,125 @@ main {
     transform: translateY(-5px);
 }
 
-/* ၅။ Modern Card Design (For Tournament & Live Hub) */
-.data-card {
+/* ၅။ Auth & Form Styles (Login/Sign Up) */
+.auth-form-container {
+    padding: 20px;
+    text-align: center;
+}
+
+.auth-input {
+    width: 100%;
+    padding: 14px;
+    margin-bottom: 12px;
+    border-radius: 12px;
+    border: 1px solid var(--border);
+    background: var(--card-bg);
+    color: #fff;
+    font-size: 0.95rem;
+    outline: none;
+}
+
+.auth-input:focus {
+    border-color: var(--gold);
+}
+
+.primary-btn {
+    width: 100%;
+    padding: 15px;
+    border-radius: 12px;
+    border: none;
+    font-weight: 800;
+    font-size: 1rem;
+    cursor: pointer;
+    background: var(--gold);
+    color: #000;
+}
+
+/* ၆။ Modal & Profile Card Section */
+.modal-overlay {
+    position: fixed;
+    top: 0; left: 0;
+    width: 100%; height: 100%;
+    background: rgba(0, 0, 0, 0.85);
+    backdrop-filter: blur(8px);
+    z-index: 3000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    animation: fadeIn 0.3s ease;
+}
+
+.profile-card {
+    background: var(--card-bg);
+    width: 85%;
+    max-width: 340px;
+    padding: 30px;
+    border-radius: 24px;
+    border: 1px solid var(--border);
+    text-align: center;
+    position: relative;
+}
+
+.profile-avatar {
+    font-size: 3.5rem;
+    margin-bottom: 15px;
+}
+
+.profile-info {
+    margin: 20px 0;
+    text-align: left;
+    background: #000;
+    padding: 15px;
+    border-radius: 12px;
+}
+
+.info-item {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 8px;
+    font-size: 0.85rem;
+}
+
+.label { color: var(--text-dim); }
+
+.logout-btn {
+    background: var(--danger);
+    color: white;
+    border: none;
+    width: 100%;
+    padding: 12px;
+    border-radius: 12px;
+    font-weight: bold;
+    margin-top: 10px;
+}
+
+.close-btn {
+    background: transparent;
+    color: var(--text-dim);
+    border: none;
+    margin-top: 15px;
+    font-size: 0.8rem;
+    text-decoration: underline;
+}
+
+/* ၇။ Standings & Data List Styles */
+.standing-row {
     background: var(--card-bg);
     border-radius: 16px;
     padding: 15px;
-    margin-bottom: 12px;
+    margin-bottom: 10px;
     border: 1px solid var(--border);
+    display: flex;
+    align-items: center;
     transition: 0.2s;
 }
 
-.data-card:active {
-    transform: scale(0.98);
+.standing-row:active {
+    transform: scale(0.97);
+    border-color: var(--gold);
 }
 
-/* ၆။ Loading Spinner */
+/* ၈။ Loading Spinner */
 .loading {
     display: flex;
     flex-direction: column;
@@ -140,31 +244,9 @@ main {
     border-left-color: var(--gold);
     border-radius: 50%;
     animation: spin 1s linear infinite;
-    margin-bottom: 15px;
 }
 
-@keyframes spin {
-    to { transform: rotate(360deg); }
-}
+@keyframes spin { to { transform: rotate(360deg); } }
+@keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
 
-/* ၇။ Buttons & Inputs */
-.nav-btn { /* Division switcher style */
-    padding: 12px 24px;
-    border-radius: 50px;
-    border: none;
-    font-weight: 800;
-    font-size: 0.85rem;
-    cursor: pointer;
-    transition: 0.3s;
-}
-
-.nav-btn.active {
-    background: var(--gold);
-    color: black;
-    box-shadow: 0 5px 15px rgba(212, 175, 55, 0.3);
-}
-
-/* Scrollbar hide (for clean look) */
-::-webkit-scrollbar {
-    display: none;
-}
+::-webkit-scrollbar { display: none; }
