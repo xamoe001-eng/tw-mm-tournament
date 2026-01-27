@@ -110,7 +110,7 @@ main {
     transform: translateY(-5px);
 }
 
-/* ၅။ Auth & Form Styles (Login/Sign Up) */
+/* ၅။ Auth & Form Styles */
 .auth-form-container {
     padding: 20px;
     text-align: center;
@@ -126,6 +126,7 @@ main {
     color: #fff;
     font-size: 0.95rem;
     outline: none;
+    transition: 0.3s;
 }
 
 .auth-input:focus {
@@ -142,9 +143,43 @@ main {
     cursor: pointer;
     background: var(--gold);
     color: #000;
+    transition: 0.2s;
 }
 
-/* ၆။ Modal & Profile Card Section */
+.primary-btn:active {
+    transform: scale(0.98);
+}
+
+/* ၆။ Custom Toast Alerts (Alert လှလှလေးများ) */
+.toast-container {
+    position: fixed;
+    top: 20px;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 9999;
+    width: 90%;
+    max-width: 350px;
+    pointer-events: none;
+}
+
+.toast-alert {
+    background: #1a1a1a;
+    color: #fff;
+    padding: 15px 20px;
+    border-radius: 12px;
+    border-left: 4px solid var(--gold);
+    margin-bottom: 10px;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    animation: slideDown 0.4s ease forwards, fadeOut 0.4s ease 3s forwards;
+}
+
+.toast-alert.error { border-left-color: var(--danger); }
+.toast-alert.success { border-left-color: var(--fpl-green); }
+
+/* ၇။ Modal & Profile Card */
 .modal-overlay {
     position: fixed;
     top: 0; left: 0;
@@ -166,13 +201,11 @@ main {
     border-radius: 24px;
     border: 1px solid var(--border);
     text-align: center;
-    position: relative;
 }
 
-.profile-avatar {
-    font-size: 3.5rem;
-    margin-bottom: 15px;
-}
+.profile-avatar { font-size: 3.5rem; margin-bottom: 15px; }
+
+.gold-text { color: var(--gold); font-weight: bold; }
 
 .profile-info {
     margin: 20px 0;
@@ -199,7 +232,7 @@ main {
     padding: 12px;
     border-radius: 12px;
     font-weight: bold;
-    margin-top: 10px;
+    cursor: pointer;
 }
 
 .close-btn {
@@ -209,44 +242,29 @@ main {
     margin-top: 15px;
     font-size: 0.8rem;
     text-decoration: underline;
+    cursor: pointer;
 }
 
-/* ၇။ Standings & Data List Styles */
-.standing-row {
-    background: var(--card-bg);
-    border-radius: 16px;
-    padding: 15px;
-    margin-bottom: 10px;
-    border: 1px solid var(--border);
-    display: flex;
-    align-items: center;
-    transition: 0.2s;
+/* ၈။ Animations */
+@keyframes slideDown {
+    from { opacity: 0; transform: translateY(-20px); }
+    to { opacity: 1; transform: translateY(0); }
 }
 
-.standing-row:active {
-    transform: scale(0.97);
-    border-color: var(--gold);
+@keyframes fadeOut {
+    to { opacity: 0; transform: translateY(-20px); visibility: hidden; }
 }
 
-/* ၈။ Loading Spinner */
-.loading {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    height: 300px;
-}
+@keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+
+@keyframes spin { to { transform: rotate(360deg); } }
 
 .spinner {
-    width: 40px;
-    height: 40px;
+    width: 40px; height: 40px;
     border: 4px solid rgba(212, 175, 55, 0.1);
     border-left-color: var(--gold);
     border-radius: 50%;
     animation: spin 1s linear infinite;
 }
-
-@keyframes spin { to { transform: rotate(360deg); } }
-@keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
 
 ::-webkit-scrollbar { display: none; }
