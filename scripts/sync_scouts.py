@@ -13,6 +13,7 @@ def initialize_firebase():
             cred_dict = json.loads(service_account_info)
             cred = credentials.Certificate(cred_dict)
         else:
+            # Local path
             cred = credentials.Certificate('scripts/serviceAccountKey.json')
         firebase_admin.initialize_app(cred)
     return firestore.client()
@@ -38,11 +39,11 @@ def sync_scouts():
     players_raw, teams_map, pos_map, gw = get_fpl_base_data()
     print(f"--- Syncing Data for Gameweek {gw} ---")
 
-    # --- မန်နေဂျာများ၏ အသင်းများကို Sync လုပ်ခြင်း ---
     for league_name, l_id in LEAGUES.items():
         print(f"Processing {league_name}...")
         standings_url = f"{FPL_API}leagues-classic/{l_id}/standings/"
-        standings = requests.get(standings_url).json()['standings']['results']
+        standings_res = requests.get(standings_url).json()
+        standings = standings_res['standings']['results']
 
         batch = db.batch()
         for team in standings:
@@ -55,15 +56,18 @@ def sync_scouts():
                 for p in picks_res['picks']:
                     p_id = p['element']
                     p_info = players_raw.get(p_id)
+                    
+                    # 👈 Logic ပြင်ဆင်ချက်- dict.get() သုံးပြီး Default value False ပေးထားသည်
+                    # Triple Captain သုံးထားရင် multiplier က 3 ဖြစ်နေတတ်သည်
                     lineup.append({
                         "id": p_id,
                         "name": p_info['web_name'],
                         "pos": pos_map[p_info['element_type']],
                         "team": teams_map[p_info['team']]['short'],
-                        "is_captain": p['is_captain'],
-                        "is_vice_captain": p['is_vice_captain'], # 👈 VC logic ထည့်ထားသည်
-                        "multiplier": p['multiplier'],
-                        "points": p_info['event_points'] # 👈 Player ရဲ့ လက်ရှိ GW point
+                        "is_captain": p.get('is_captain', False),
+                        "is_vice_captain": p.get('is_vice_captain', False),
+                        "multiplier": p.get('multiplier', 1),
+                        "points": p_info['event_points']
                     })
 
             data = {
@@ -81,8 +85,8 @@ def sync_scouts():
             batch.set(doc_ref, data, merge=True)
         batch.commit()
 
-    # --- ၃။ Player Scout အပိုင်း (GW Point နှင့် VC ပါဝင်စေရန်) ---
-    print("Fetching Player Fixtures & Advanced Stats...")
+    # --- Player Scout Sync ---
+    print("Fetching Player Stats...")
     top_scouts = sorted(players_raw.values(), key=lambda x: x['total_points'], reverse=True)[:100]
     
     s_batch = db.batch()
@@ -116,7 +120,7 @@ def sync_scouts():
             "team": teams_map[p['team']]['short'],
             "team_full": teams_map[p['team']]['full'],
             "pos": pos_map[p['element_type']],
-            "gw_points": p['event_points'], # 👈 ဒီမှာ GW points (လက်ရှိပွဲစဉ်ရမှတ်) ထည့်ပေးလိုက်ပါပြီ
+            "gw_points": p['event_points'],
             "form": p['form'],
             "price": p['now_cost'] / 10,
             "total_points": p['total_points'],
@@ -130,11 +134,10 @@ def sync_scouts():
             "fixtures": next_fixtures,
             "last_updated": firestore.SERVER_TIMESTAMP
         }, merge=True)
-        
         time.sleep(0.05)
         
     s_batch.commit()
-    print("✅ Full Advanced Sync Completed with GW Points & VC!")
+    print("✅ Advanced Sync Completed!")
 
 if __name__ == "__main__":
     sync_scouts()
