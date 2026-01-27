@@ -165,5 +165,6 @@ function listenMsgs(targetUid) {
 }
 
 function closeChat() {
-    document.getElementById('modal-holder').innerHTML = "";
+    document.getElementById('modal-holder').in
+        nerHTML = "";
 }
