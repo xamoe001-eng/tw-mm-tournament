@@ -4,19 +4,19 @@ window.renderLiveHub = function() {
     if (!mainRoot) return;
 
     mainRoot.innerHTML = `
-        <div style="text-align: center; padding: 15px;">
-            <div style="margin-bottom: 25px;">
-                <button onclick="window.loadFixtures('league')" class="nav-btn" 
-                    style="background:#D4AF37; color:black; margin:5px; border-radius: 20px; padding: 10px 20px; font-weight:bold; border:none; cursor:pointer;">
-                    League Matches
+        <div style="padding: 15px; max-width: 600px; margin: 0 auto; font-family: 'Inter', sans-serif;">
+            <div style="display: flex; justify-content: center; gap: 10px; margin-bottom: 25px;">
+                <button id="nav-league" onclick="window.loadFixtures('league')" 
+                    style="flex: 1; background:#D4AF37; color:black; border-radius: 50px; padding: 12px; font-weight:800; border:none; cursor:pointer; font-size: 0.8rem; transition: 0.3s;">
+                    LEAGUE
                 </button>
-                <button onclick="window.loadFixtures('fa_cup')" class="nav-btn" 
-                    style="background:#00ff88; color:black; margin:5px; border-radius: 20px; padding: 10px 20px; font-weight:bold; border:none; cursor:pointer;">
-                    TW FA Cup
+                <button id="nav-fa" onclick="window.loadFixtures('fa_cup')" 
+                    style="flex: 1; background:#222; color:#888; border-radius: 50px; padding: 12px; font-weight:800; border:none; cursor:pointer; font-size: 0.8rem; transition: 0.3s;">
+                    FA CUP
                 </button>
             </div>
-            <div id="live-content" style="min-height: 300px;">
-                <div class="loading">🎮 ပွဲစဉ်ဇယားများကို စစ်ဆေးနေသည်...</div>
+            <div id="live-content">
+                <div class="loading" style="text-align:center; color:#555; padding-top:50px;">🎮 Loading Matches...</div>
             </div>
         </div>
     `;
@@ -27,28 +27,38 @@ window.renderLiveHub = function() {
 // ၂။ Fixtures များကို ဆွဲထုတ်ပြီး Live အမှတ်များနှင့် ချိတ်ဆက်ပြသခြင်း
 window.loadFixtures = function(type) {
     const content = document.getElementById('live-content');
+    const navLeague = document.getElementById('nav-league');
+    const navFA = document.getElementById('nav-fa');
     if (!content) return;
 
-    content.innerHTML = `<div class="loading">⌛ ${type === 'league' ? 'League' : 'FA Cup'} ပွဲစဉ်များ ဆွဲယူနေသည်...</div>`;
+    // Button UI Update
+    if (type === 'league') {
+        navLeague.style.background = '#D4AF37'; navLeague.style.color = '#000';
+        navFA.style.background = '#222'; navFA.style.color = '#888';
+    } else {
+        navFA.style.background = '#00ff88'; navFA.style.color = '#000';
+        navLeague.style.background = '#222'; navLeague.style.color = '#888';
+    }
 
-    // Fixtures များကို ဖတ်ခြင်း
+    content.innerHTML = `<div style="text-align:center; padding:50px; color:#555;">⌛ Fetching Data...</div>`;
+
+    // Fixtures နဲ့ Standings ဒေတာကို တစ်ပြိုင်နက်ဖတ်ခြင်း
     db.collection("fixtures")
       .where("type", "==", type)
       .onSnapshot((fixturesSnapshot) => {
         if (fixturesSnapshot.empty) {
-            content.innerHTML = `<div style="padding:40px; color:#888;">ပွဲစဉ်များ မရှိသေးပါ။</div>`;
+            content.innerHTML = `<div style="padding:50px; text-align:center; color:#444; font-weight:800;">NO FIXTURES FOUND</div>`;
             return;
         }
 
-        // Rankings (Live Score) များကို တစ်ခါတည်း ဖတ်ခြင်း
         db.collection("tw_mm_tournament").onSnapshot((rankSnapshot) => {
             let scores = {};
             rankSnapshot.forEach(doc => {
-                scores[doc.id] = doc.data().gw_points; // FPL ID အလိုက် GW အမှတ် သိမ်းမည်
+                scores[doc.id] = doc.data().gw_points || 0;
             });
 
-            let html = `<h2 style="color:#fff; font-size:1.1rem; margin-bottom:20px;">
-                            ${type === 'league' ? 'H2H LEAGUE MATCHES' : 'TW FA CUP PLAYOFF'}
+            let html = `<h2 style="color:#D4AF37; font-size:0.8rem; letter-spacing:1px; margin-bottom:15px; text-transform:uppercase; text-align:center; opacity:0.8;">
+                            ${type === 'league' ? 'H2H League Standings' : 'TW FA Cup Tournament'}
                         </h2>`;
 
             fixturesSnapshot.forEach(doc => {
@@ -56,37 +66,42 @@ window.loadFixtures = function(type) {
                 const homePts = scores[f.home.id] || 0;
                 const awayPts = scores[f.away.id] || 0;
 
-                // ဘယ်သူနိုင်နေလဲ အရောင်သတ်မှတ်ခြင်း
-                const homeStyle = homePts > awayPts ? "color:#00ff88; font-weight:bold;" : "color:#fff;";
-                const awayStyle = awayPts > homePts ? "color:#00ff88; font-weight:bold;" : "color:#fff;";
+                const homeStyle = homePts > awayPts ? "color:#00ff88; font-weight:900;" : "color:#fff;";
+                const awayStyle = awayPts > homePts ? "color:#00ff88; font-weight:900;" : "color:#fff;";
+                
+                // Division စာသားကို ခွဲခြားခြင်း
+                const divLabel = type === 'league' ? `DIV: ${f.division || 'N/A'}` : `TW FA CUP`;
 
                 html += `
-                    <div style="background:#1a1a1a; border-radius:15px; padding:15px; margin-bottom:15px; border-left: 4px solid ${type === 'league' ? '#D4AF37' : '#00ff88'};">
-                        <div style="display:flex; justify-content:space-between; align-items:center;">
-                            <div style="flex:1; text-align:right; padding-right:10px;">
-                                <div style="font-size:0.9rem; ${homeStyle}">${f.home.name}</div>
-                                <div style="font-size:0.7rem; color:#888;">${f.home.manager}</div>
-                            </div>
-
-                            <div style="background:#333; padding:5px 15px; border-radius:8px; min-width:80px; text-align:center;">
-                                <span style="font-size:1.2rem; font-weight:bold; ${homeStyle}">${homePts}</span>
-                                <span style="color:#888; margin:0 5px;">-</span>
-                                <span style="font-size:1.2rem; font-weight:bold; ${awayStyle}">${awayPts}</span>
-                            </div>
-
-                            <div style="flex:1; text-align:left; padding-left:10px;">
-                                <div style="font-size:0.9rem; ${awayStyle}">${f.away.name}</div>
-                                <div style="font-size:0.7rem; color:#888;">${f.away.manager}</div>
-                            </div>
+                    <div style="background:#111; border-radius:16px; padding:18px; margin-bottom:12px; border: 1px solid #222; position:relative; overflow:hidden;">
+                        <div style="display:flex; justify-content:space-between; margin-bottom:15px; font-size:0.6rem; font-weight:800; color:#444; text-transform:uppercase;">
+                            <span>GW ${f.gameweek}</span>
+                            <span style="color:${type === 'league' ? '#D4AF37' : '#00ff88'}">${divLabel}</span>
                         </div>
-                        <div style="font-size:0.6rem; color:#555; margin-top:10px; text-transform:uppercase;">
-                            GW ${f.gameweek} | Division: ${f.division}
+
+                        <div style="display:flex; justify-content:space-between; align-items:center;">
+                            <div style="flex:1; text-align:center;">
+                                <div style="font-size:0.85rem; margin-bottom:4px; ${homeStyle}">${f.home.name}</div>
+                                <div style="font-size:0.65rem; color:#555;">${f.home.manager}</div>
+                            </div>
+
+                            <div style="display:flex; align-items:center; background:#1a1a1a; padding:8px 15px; border-radius:10px; border: 1px solid #333; margin:0 15px;">
+                                <span style="font-size:1.3rem; font-weight:900; ${homeStyle}">${homePts}</span>
+                                <span style="color:#444; margin:0 10px; font-weight:bold;">:</span>
+                                <span style="font-size:1.3rem; font-weight:900; ${awayStyle}">${awayPts}</span>
+                            </div>
+
+                            <div style="flex:1; text-align:center;">
+                                <div style="font-size:0.85rem; margin-bottom:4px; ${awayStyle}">${f.away.name}</div>
+                                <div style="font-size:0.65rem; color:#555;">${f.away.manager}</div>
+                            </div>
                         </div>
                     </div>
                 `;
             });
 
             content.innerHTML = html;
-        });
+        }
+                                                    );
     });
 };
