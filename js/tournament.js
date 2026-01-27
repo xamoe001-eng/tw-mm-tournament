@@ -5,7 +5,7 @@ window.renderLeagues = function() {
     const mainRoot = document.getElementById('main-root');
     if (!mainRoot) return;
 
-    // Table Design အတွက် လိုအပ်သော CSS ကို Inject လုပ်ခြင်း
+    // Table Design အတွက် CSS Inject လုပ်ခြင်း
     const leagueStyle = document.createElement('style');
     leagueStyle.innerHTML = `
         .league-table {
@@ -34,8 +34,13 @@ window.renderLeagues = function() {
         .mgr-title { font-size: 0.65rem; color: #555; }
         .stat-cell { text-align: center; width: 45px; font-family: 'Monaco', monospace; }
         .gw-box { color: #00ff88; font-weight: bold; }
-        .pts-box { font-weight: 900; font-size: 1rem; color: #D4AF37; }
-        .wdl-text { font-size: 0.6rem; color: #444; letter-spacing: 0.5px; }
+        .pts-box { font-weight: 900; font-size: 1.1rem; }
+        
+        /* W-D-L Colors */
+        .w-text { color: #00ff88; font-weight: bold; } /* နိုင် - အစိမ်း */
+        .d-text { color: #ffcc00; font-weight: bold; } /* သရေ - အဝါ */
+        .l-text { color: #ff4d4d; font-weight: bold; } /* ရှုံး - အနီ */
+        .dash { color: #444; margin: 0 1px; }
     `;
     document.head.appendChild(leagueStyle);
 
@@ -67,8 +72,6 @@ window.filterDivision = function(divTag) {
     const btnB = document.getElementById('btn-divB');
     if (!content) return;
 
-    // Active Tab Style ပြောင်းလဲခြင်း
-    const activeColor = divTag === 'A' ? '#D4AF37' : '#C0C0C0';
     if (divTag === 'A') {
         btnA.style.background = '#D4AF37'; btnA.style.color = '#000';
         btnB.style.background = 'transparent'; btnB.style.color = '#666';
@@ -94,7 +97,7 @@ window.filterDivision = function(divTag) {
                         <th class="rank-cell">#</th>
                         <th class="team-cell">TEAM / MGR</th>
                         <th class="stat-cell">GW</th>
-                        <th class="stat-cell">P-W-D-L</th>
+                        <th class="stat-cell" style="width: 70px;">P / W-D-L</th>
                         <th class="stat-cell">PTS</th>
                     </tr>
                 </thead>
@@ -111,13 +114,15 @@ window.filterDivision = function(divTag) {
                 <tr>
                     <td class="rank-cell" style="color: ${rankColor};">${pos}</td>
                     <td class="team-cell">
-                        <span class="team-title">${p.team_name}</span>
-                        <span class="mgr-title">${p.manager_name}</span>
+                        <span class="team-title">${p.team_name || 'Unknown'}</span>
+                        <span class="mgr-title">${p.manager_name || 'User'}</span>
                     </td>
                     <td class="stat-cell gw-box">${p.gw_points || 0}</td>
                     <td class="stat-cell">
-                        <div style="color: #bbb; font-weight: bold; font-size: 0.7rem;">${p.played || 0}</div>
-                        <div class="wdl-text">${p.wins || 0}-${p.draws || 0}-${p.losses || 0}</div>
+                        <div style="color: #bbb; font-weight: bold; font-size: 0.75rem; margin-bottom: 2px;">${p.played || 0}</div>
+                        <div style="font-size: 0.65rem;">
+                            <span class="w-text">${p.wins || 0}</span><span class="dash">-</span><span class="d-text">${p.draws || 0}</span><span class="dash">-</span><span class="l-text">${p.losses || 0}</span>
+                        </div>
                     </td>
                     <td class="stat-cell pts-box" style="color: ${ptsColor};">${p.h2h_points || 0}</td>
                 </tr>
