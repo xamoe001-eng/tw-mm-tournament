@@ -187,7 +187,7 @@ window.reSortL = (t) => {
 };
 
 /**
- * ၅။ Pitch View (Fixed Vice Captain logic)
+ * ၅။ Pitch View (Fixed Official Vice Captain Display)
  */
 window.showTPitch = (id) => {
     const t = window.allLeagues.find(x => x.entry_id == id);
@@ -198,6 +198,9 @@ window.showTPitch = (id) => {
     const lineup = t.lineup || [];
     const starters = lineup.filter(p => p.multiplier > 0);
     const bench = lineup.filter(p => p.multiplier === 0);
+
+    // 🔥 အသစ်ပြင်ဆင်ချက် - တစ်သင်းလုံးစာ VC ကို ဒီမှာတင် ရှာထားမယ်
+    const realVC = starters.find(p => p.is_vice_captain === true);
 
     modal.innerHTML = `
         <div class="profile-card" style="width:98%; max-width:400px; padding:15px; background:#041a04; border:1px solid #1a3d1a;" onclick="event.stopPropagation()">
@@ -212,10 +215,10 @@ window.showTPitch = (id) => {
             </div>
 
             <div class="pitch-container" style="background: linear-gradient(to bottom, #0a4d0a 0%, #063306 100%); border-radius:8px; padding:20px 5px; min-height:380px; display:flex; flex-direction:column; justify-content:space-around; border:1px solid #1a3d1a; box-shadow: inset 0 0 50px rgba(0,0,0,0.5);">
-                <div style="display:flex; justify-content:center; gap:8px;">${renderPitchPlayers(starters.filter(p=>p.pos==='FWD'))}</div>
-                <div style="display:flex; justify-content:center; gap:8px;">${renderPitchPlayers(starters.filter(p=>p.pos==='MID'))}</div>
-                <div style="display:flex; justify-content:center; gap:8px;">${renderPitchPlayers(starters.filter(p=>p.pos==='DEF'))}</div>
-                <div style="display:flex; justify-content:center; gap:8px;">${renderPitchPlayers(starters.filter(p=>p.pos==='GKP'))}</div>
+                <div style="display:flex; justify-content:center; gap:8px;">${renderPitchPlayers(starters.filter(p=>p.pos==='FWD'), realVC)}</div>
+                <div style="display:flex; justify-content:center; gap:8px;">${renderPitchPlayers(starters.filter(p=>p.pos==='MID'), realVC)}</div>
+                <div style="display:flex; justify-content:center; gap:8px;">${renderPitchPlayers(starters.filter(p=>p.pos==='DEF'), realVC)}</div>
+                <div style="display:flex; justify-content:center; gap:8px;">${renderPitchPlayers(starters.filter(p=>p.pos==='GKP'), realVC)}</div>
             </div>
 
             <div style="margin-top:12px; background:rgba(0,0,0,0.4); padding:12px; border-radius:8px; display:flex; justify-content:space-between; border:1px solid #222; gap:5px;">
@@ -233,10 +236,7 @@ window.showTPitch = (id) => {
     document.body.appendChild(modal);
 };
 
-function renderPitchPlayers(arr) {
-    // တစ်သင်းလုံးမှာ Multiplier အများဆုံးလူကို ရှာရန် (Vice Captain badge အတွက်)
-    const maxMult = Math.max(...arr.map(p => p.multiplier || 1));
-
+function renderPitchPlayers(arr, realVC) {
     return arr.map(p => {
         let capBadge = '';
         
@@ -246,9 +246,9 @@ function renderPitchPlayers(arr) {
             const bg = p.multiplier === 3 ? '#ff4444' : '#000';
             capBadge = `<div style="position:absolute; top:-12px; right:0; background:${bg}; color:var(--gold); font-size:0.65rem; padding:1px 4px; border:1px solid var(--gold); border-radius:3px; font-weight:900; z-index:5;">${label}</div>`;
         } 
-        // ၂။ Vice Captain Badge Logic
-        // is_vice_captain true ဖြစ်ရင် သို့မဟုတ် multiplier က 1 ထက်ကြီးပြီး Captain မဟုတ်ရင် Badge ပြပေးမည်
-        else if (p.is_vice_captain === true || (p.multiplier === maxMult && p.multiplier > 0 && !p.is_captain)) { 
+        // ၂။ Official Vice Captain Logic
+        // တကယ် VC ပေးထားတဲ့ ID နဲ့ ဒီလူရဲ့ ID တူမှသာ Badge ပြမယ်
+        else if (realVC && p.id === realVC.id) { 
             capBadge = `<div style="position:absolute; top:-12px; right:0; background:#333; color:#fff; font-size:0.65rem; padding:1px 4px; border:1px solid #fff; border-radius:3px; font-weight:900; z-index:5;">V</div>`;
         }
 
