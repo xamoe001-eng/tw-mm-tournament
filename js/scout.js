@@ -187,7 +187,7 @@ window.reSortL = (t) => {
 };
 
 /**
- * ၅။ Pitch View (Updated: V-Captain & Bigger Bench)
+ * ၅။ Pitch View (Fixed Vice Captain logic)
  */
 window.showTPitch = (id) => {
     const t = window.allLeagues.find(x => x.entry_id == id);
@@ -234,13 +234,21 @@ window.showTPitch = (id) => {
 };
 
 function renderPitchPlayers(arr) {
+    // တစ်သင်းလုံးမှာ Multiplier အများဆုံးလူကို ရှာရန် (Vice Captain badge အတွက်)
+    const maxMult = Math.max(...arr.map(p => p.multiplier || 1));
+
     return arr.map(p => {
         let capBadge = '';
+        
+        // ၁။ Captain / Triple Captain Badge
         if (p.is_captain) {
             const label = p.multiplier === 3 ? 'TC' : 'C';
             const bg = p.multiplier === 3 ? '#ff4444' : '#000';
             capBadge = `<div style="position:absolute; top:-12px; right:0; background:${bg}; color:var(--gold); font-size:0.65rem; padding:1px 4px; border:1px solid var(--gold); border-radius:3px; font-weight:900; z-index:5;">${label}</div>`;
-        } else if (p.is_vice_captain === true) { 
+        } 
+        // ၂။ Vice Captain Badge Logic
+        // is_vice_captain true ဖြစ်ရင် သို့မဟုတ် multiplier က 1 ထက်ကြီးပြီး Captain မဟုတ်ရင် Badge ပြပေးမည်
+        else if (p.is_vice_captain === true || (p.multiplier === maxMult && p.multiplier > 0 && !p.is_captain)) { 
             capBadge = `<div style="position:absolute; top:-12px; right:0; background:#333; color:#fff; font-size:0.65rem; padding:1px 4px; border:1px solid #fff; border-radius:3px; font-weight:900; z-index:5;">V</div>`;
         }
 
