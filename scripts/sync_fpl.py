@@ -6,10 +6,8 @@ import os
 # ၁။ Firebase ချိတ်ဆက်ခြင်း
 def initialize_firebase():
     if not firebase_admin._apps:
-        # လမ်းကြောင်းကို GitHub Actions ရော Local ပါ အဆင်ပြေအောင် ချိန်ထားသည်
         cred_path = os.path.join(os.path.dirname(__file__), 'serviceAccountKey.json')
         if not os.path.exists(cred_path):
-            # scripts folder ထဲမှာ မရှိရင် root folder မှာ ရှာမည်
             cred_path = 'serviceAccountKey.json'
             
         try:
@@ -26,14 +24,13 @@ db = initialize_firebase()
 LEAGUE_ID = "400231"
 FPL_API = "https://fantasy.premierleague.com/api/"
 TOTAL_OFFICIALS = 48 
-START_GW = 23  # ပြိုင်ပွဲစတင်သည့် GW (အစမ်းစစ်ရန် ၂၃ ထားသည်)
+START_GW = 23 
 
 def sync_data():
     if not db: return
 
     print(f"--- FPL Sync Process Started for GW {START_GW} ---")
     
-    # FPL API မှ Standings ဆွဲယူခြင်း
     try:
         r = requests.get(f"{FPL_API}leagues-classic/{LEAGUE_ID}/standings/")
         r.raise_for_status()
@@ -42,16 +39,16 @@ def sync_data():
         print(f"Error fetching data from FPL: {e}")
         return
 
-    # အမှတ်အများဆုံးအလိုက် Ranking အရင်စီခြင်း
+    # အမှတ်အများဆုံးအလိုက် Ranking စီခြင်း
     sorted_players = sorted(all_players, key=lambda x: (-x['total'], x['rank']))
 
-    # လက်ရှိ Fixtures များကို Database မှ ပြန်ဖတ်ခြင်း
+    # Fixtures ဖတ်ခြင်း
     fixtures_data = {}
     try:
         fixtures_ref = db.collection("fixtures").where("gameweek", "==", START_GW).stream()
         fixtures_data = {f.id: f.to_dict() for f in fixtures_ref}
     except Exception as e:
-        print(f"Notice: Fixtures collection not found or error. {e}")
+        print(f"Notice: Fixtures error. {e}")
 
     batch = db.batch()
     official_list = []
@@ -61,42 +58,51 @@ def sync_data():
         current_rank = idx + 1
         is_official = current_rank <= TOTAL_OFFICIALS
         
-        # Default Values
         played, wins, draws, losses, h2h_points = 0, 0, 0, 0, 0
         fa_cup_status = "TBD"
         league_tag = "General"
 
+        # Net Points တွက်ချက်ခြင်း (Event Total - Transfer Cost)
+        # API မှာ transfer cost မပါလာခဲ့ရင် 0 လို့ ယူဆမည်
+        transfer_cost = player.get('event_transfers_cost', 0)
+        net_gw_points = player['event_total'] - transfer_cost
+
         if is_official:
             league_tag = "A" if current_rank <= 24 else "B"
             
-            # Fixtures ရှိမှသာ H2H Logic ကို တွက်မည်
             if fixtures_data:
                 for fix_id, f in fixtures_data.items():
                     is_home = f['home']['id'] == player['entry']
                     is_away = f['away']['id'] == player['entry']
                     
-                    if (is_home or is_away) and f['type'] == 'league':
-                        played = 1
-                        home_score = next((p['event_total'] for p in all_players if p['entry'] == f['home']['id']), 0)
-                        away_score = next((p['event_total'] for p in all_players if p['entry'] == f['away']['id']), 0)
-
-                        if is_home:
-                            if home_score > away_score: wins, h2h_points = 1, 3
-                            elif home_score == away_score: draws, h2h_points = 1, 1
-                            else: losses = 1
-                        else:
-                            if away_score > home_score: wins, h2h_points = 1, 3
-                            elif away_score == home_score: draws, h2h_points = 1, 1
-                            else: losses = 1
-
-                    if (is_home or is_away) and f['type'] == 'fa_cup':
-                        home_score = next((p['event_total'] for p in all_players if p['entry'] == f['home']['id']), 0)
-                        away_score = next((p['event_total'] for p in all_players if p['entry'] == f['away']['id']), 0)
+                    if (is_home or is_away):
+                        # ပြိုင်ဘက်ရဲ့ Data ကို ရှာပြီး Net Points တွက်ခြင်း
+                        opp_id = f['away']['id'] if is_home else f['home']['id']
+                        opp_player = next((p for p in all_players if p['entry'] == opp_id), None)
                         
-                        if (is_home and home_score > away_score) or (is_away and away_score > home_score):
-                            fa_cup_status = "Qualified"
-                        else:
-                            fa_cup_status = "Eliminated"
+                        opp_net_score = 0
+                        if opp_player:
+                            opp_net_score = opp_player['event_total'] - opp_player.get('event_transfers_cost', 0)
+
+                        # H2H League Logic
+                        if f['type'] == 'league':
+                            played = 1
+                            if net_gw_points > opp_net_score:
+                                wins, h2h_points = 1, 3
+                            elif net_gw_points == opp_net_score:
+                                draws, h2h_points = 1, 1
+                            else:
+                                losses = 1
+
+                        # FA Cup Logic
+                        if f['type'] == 'fa_cup':
+                            if net_gw_points > opp_net_score:
+                                fa_cup_status = "Qualified"
+                            elif net_gw_points < opp_net_score:
+                                fa_cup_status = "Eliminated"
+                            else:
+                                # အမှတ်တူနေရင် Overall Rank ပိုကောင်းတဲ့သူကို ပေးနိုင်သည် (သို့မဟုတ် TBD ထားနိုင်သည်)
+                                fa_cup_status = "Draw (Replay/Rank)"
 
         data = {
             "fpl_id": player['entry'],
@@ -108,7 +114,8 @@ def sync_data():
             "losses": losses,
             "h2h_points": h2h_points,
             "fpl_total_points": player['total'],
-            "gw_points": player['event_total'],
+            "gw_points": net_gw_points, # -4 နှုတ်ပြီးသားရမှတ်ကို သိမ်းမည်
+            "transfer_cost": transfer_cost,
             "tournament_rank": current_rank,
             "is_official": is_official,
             "league_tag": league_tag,
@@ -122,13 +129,12 @@ def sync_data():
         doc_ref = db.collection("tw_mm_tournament").document(entry_id)
         batch.set(doc_ref, data, merge=True)
 
-    # ၃။ Fixtures Generation
     if official_list:
         generate_fixtures(official_list)
 
     try:
         batch.commit()
-        print(f"--- Sync Success for GW {START_GW}! ---")
+        print(f"--- Sync Success for GW {START_GW} (Transfer Costs Deducted)! ---")
     except Exception as e:
         print(f"Batch Error: {e}")
 
@@ -136,17 +142,14 @@ def generate_fixtures(players):
     div_a = [p for p in players if p['league_tag'] == 'A']
     div_b = [p for p in players if p['league_tag'] == 'B']
     
-    # Division A
     for i in range(0, len(div_a), 2):
         if i+1 < len(div_a):
             upload_fixture(f"gw{START_GW}_divA_m{i}", "league", "A", div_a[i], div_a[i+1])
     
-    # Division B
     for i in range(0, len(div_b), 2):
         if i+1 < len(div_b):
             upload_fixture(f"gw{START_GW}_divB_m{i}", "league", "B", div_b[i], div_b[i+1])
 
-    # FA Cup (Top A vs Bottom B logic)
     for i in range(min(len(div_a), len(div_b))):
         upload_fixture(f"gw{START_GW}_fa_m{i}", "fa_cup", "Mixed", div_a[i], div_b[len(div_b)-1-i])
 
@@ -161,11 +164,9 @@ def upload_fixture(fix_id, match_type, div, p1, p2):
         "status": "active"
     }, merge=True)
 
-# အရေးကြီးသည်- Workflow ထဲက NameError ကို ပြင်ရန်
 def sync_sc():
-    """ ဤ function နာမည်သည် workflow ထဲတွင် ခေါ်ထားသော နာမည်ဖြစ်ရမည် """
     print("Scout data sync process initiated...")
-    # Scout logic များကို ဤနေရာတွင် ထည့်ပါ သို့မဟုတ် အခြား file သို့ ညွှန်းပါ
 
 if __name__ == "__main__":
     sync_data()
+    
