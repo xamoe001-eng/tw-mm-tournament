@@ -1,7 +1,7 @@
 /* ၁။ Global Variables & Theme Setup */
 :root {
     --gold: #D4AF37;
-    --dark-bg: #000000;      /* Pure black for OLED screens */
+    --dark-bg: #000000;
     --card-bg: #111111;
     --item-bg: #1a1a1a;
     --text-main: #ffffff;
@@ -46,20 +46,7 @@ body {
     color: white;
 }
 
-.logo span {
-    color: var(--gold);
-}
-
-.auth-container {
-    background: var(--card-bg);
-    padding: 6px 14px;
-    border-radius: 30px;
-    border: 1px solid var(--border);
-    font-size: 0.8rem;
-    font-weight: bold;
-    color: var(--gold);
-    cursor: pointer;
-}
+.logo span { color: var(--gold); }
 
 /* ၃။ Main Content Area */
 main {
@@ -69,7 +56,40 @@ main {
     min-height: 80vh;
 }
 
-/* ၄။ Bottom Navigation */
+/* ၄။ Scout Tables (Player & League Tables) */
+.scout-table {
+    width: 100%;
+    border-collapse: collapse;
+    background: var(--card-bg);
+    border-radius: 12px;
+    overflow: hidden;
+    font-size: 0.85rem;
+    margin-bottom: 20px;
+    border: 1px solid var(--border);
+}
+
+.scout-table th {
+    background: #1a1a1a;
+    color: var(--text-dim);
+    padding: 12px 10px;
+    font-size: 0.7rem;
+    text-transform: uppercase;
+    text-align: center;
+    border-bottom: 2px solid var(--border);
+}
+
+.scout-table th:first-child { text-align: left; }
+
+.scout-table td {
+    padding: 14px 10px;
+    border-bottom: 1px solid var(--border);
+}
+
+.scout-table tr:active {
+    background: #222;
+}
+
+/* ၅။ Bottom Navigation */
 .bottom-nav {
     position: fixed;
     bottom: 0;
@@ -97,24 +117,27 @@ main {
     transition: 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
-.nav-icon { font-size: 1.4rem; }
-.nav-label {
-    font-size: 0.65rem;
-    font-weight: 700;
-    text-transform: uppercase;
-    letter-spacing: 0.5px;
-}
-
 .nav-item.active {
     color: var(--gold);
     transform: translateY(-5px);
 }
 
-/* ၅။ Auth & Form Styles */
-.auth-form-container {
-    padding: 20px;
-    text-align: center;
+/* ၆။ Buttons & Forms */
+.primary-btn {
+    width: 100%;
+    padding: 14px;
+    border-radius: 12px;
+    border: none;
+    font-weight: 800;
+    font-size: 0.9rem;
+    cursor: pointer;
+    background: var(--gold);
+    color: #000;
+    transition: 0.2s;
+    text-transform: uppercase;
 }
+
+.primary-btn:active { transform: scale(0.98); }
 
 .auth-input {
     width: 100%;
@@ -124,68 +147,52 @@ main {
     border: 1px solid var(--border);
     background: var(--card-bg);
     color: #fff;
-    font-size: 0.95rem;
     outline: none;
-    transition: 0.3s;
 }
 
-.auth-input:focus {
-    border-color: var(--gold);
+/* ၇။ Pitch View (Formation Pitch) */
+.pitch-container {
+    background: linear-gradient(180deg, #114211 0%, #0a2d0a 100%);
+    background-image: url('https://www.transparenttextures.com/patterns/pinstripe.png');
+    border-radius: 15px;
+    padding: 20px 10px;
+    display: grid;
+    grid-template-rows: repeat(4, 1fr);
+    gap: 15px;
+    border: 2px solid rgba(255,255,255,0.1);
+    position: relative;
 }
 
-.primary-btn {
-    width: 100%;
-    padding: 15px;
-    border-radius: 12px;
-    border: none;
-    font-weight: 800;
-    font-size: 1rem;
-    cursor: pointer;
-    background: var(--gold);
-    color: #000;
-    transition: 0.2s;
-}
-
-.primary-btn:active {
-    transform: scale(0.98);
-}
-
-/* ၆။ Custom Toast Alerts (Alert လှလှလေးများ) */
-.toast-container {
-    position: fixed;
-    top: 20px;
-    left: 50%;
-    transform: translateX(-50%);
-    z-index: 9999;
-    width: 90%;
-    max-width: 350px;
-    pointer-events: none;
-}
-
-.toast-alert {
-    background: #1a1a1a;
-    color: #fff;
-    padding: 15px 20px;
-    border-radius: 12px;
-    border-left: 4px solid var(--gold);
-    margin-bottom: 10px;
-    box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+.pitch-row {
     display: flex;
-    align-items: center;
-    gap: 12px;
-    animation: slideDown 0.4s ease forwards, fadeOut 0.4s ease 3s forwards;
+    justify-content: center;
+    gap: 10px;
 }
 
-.toast-alert.error { border-left-color: var(--danger); }
-.toast-alert.success { border-left-color: var(--fpl-green); }
+.player-card-mini {
+    text-align: center;
+    width: 60px;
+}
 
-/* ၇။ Modal & Profile Card */
+.player-name-label {
+    background: #000;
+    color: #fff;
+    font-size: 0.55rem;
+    padding: 2px 4px;
+    border-radius: 3px;
+    margin-top: 3px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+/* ၈။ Modal & Popups */
 .modal-overlay {
     position: fixed;
     top: 0; left: 0;
     width: 100%; height: 100%;
-    background: rgba(0, 0, 0, 0.85);
-    backdrop-filter: blur(8px);
+    background: rgba(0, 0, 0, 0.9);
+    backdrop-filter: blur(10px);
     z-index: 3000;
     display: flex;
     align-items: center;
@@ -195,76 +202,91 @@ main {
 
 .profile-card {
     background: var(--card-bg);
-    width: 85%;
-    max-width: 340px;
-    padding: 30px;
+    width: 90%;
+    max-width: 400px;
+    padding: 25px;
     border-radius: 24px;
     border: 1px solid var(--border);
     text-align: center;
+    position: relative;
+    max-height: 90vh;
+    overflow-y: auto;
 }
 
-.profile-avatar { font-size: 3.5rem; margin-bottom: 15px; }
-
-.gold-text { color: var(--gold); font-weight: bold; }
-
 .profile-info {
-    margin: 20px 0;
+    margin: 15px 0;
     text-align: left;
     background: #000;
     padding: 15px;
     border-radius: 12px;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
 }
 
 .info-item {
     display: flex;
-    justify-content: space-between;
-    margin-bottom: 8px;
-    font-size: 0.85rem;
+    flex-direction: column;
 }
 
-.label { color: var(--text-dim); }
-
-.logout-btn {
-    background: var(--danger);
-    color: white;
-    border: none;
-    width: 100%;
-    padding: 12px;
-    border-radius: 12px;
-    font-weight: bold;
-    cursor: pointer;
-}
-
-.close-btn {
-    background: transparent;
+.info-item .label {
     color: var(--text-dim);
-    border: none;
-    margin-top: 15px;
-    font-size: 0.8rem;
-    text-decoration: underline;
-    cursor: pointer;
+    font-size: 0.65rem;
+    text-transform: uppercase;
 }
 
-/* ၈။ Animations */
+.info-item .val {
+    color: var(--gold);
+    font-weight: bold;
+    font-size: 0.9rem;
+}
+
+/* ၉။ Toast Notifications */
+.toast-container {
+    position: fixed;
+    top: 20px;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 9999;
+    width: 90%;
+    max-width: 350px;
+}
+
+.toast-alert {
+    background: #1a1a1a;
+    color: #fff;
+    padding: 15px;
+    border-radius: 12px;
+    border-left: 4px solid var(--gold);
+    margin-bottom: 10px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+    animation: slideDown 0.4s ease forwards;
+}
+
+/* ၁၀။ Utilities & Animations */
+.gold-text { color: var(--gold); }
+.fpl-green { color: var(--fpl-green); }
+.danger-text { color: var(--danger); }
+
 @keyframes slideDown {
     from { opacity: 0; transform: translateY(-20px); }
     to { opacity: 1; transform: translateY(0); }
 }
 
-@keyframes fadeOut {
-    to { opacity: 0; transform: translateY(-20px); visibility: hidden; }
-}
-
 @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
 
-@keyframes spin { to { transform: rotate(360deg); } }
-
 .spinner {
-    width: 40px; height: 40px;
-    border: 4px solid rgba(212, 175, 55, 0.1);
+    width: 30px; height: 30px;
+    border: 3px solid rgba(212, 175, 55, 0.1);
     border-left-color: var(--gold);
     border-radius: 50%;
     animation: spin 1s linear infinite;
+    margin: 20px auto;
 }
+
+@keyframes spin { to { transform: rotate(360deg); } }
 
 ::-webkit-scrollbar { display: none; }
