@@ -7,6 +7,7 @@ style.innerHTML = `
         width: 40px; height: 40px; background: linear-gradient(45deg, #D4AF37, #aa8c2c); 
         color: black; border-radius: 50%; display: flex; align-items: center; 
         justify-content: center; font-weight: bold; cursor: pointer; font-size: 18px;
+        text-transform: uppercase;
     }
     .post-btn { 
         background: #D4AF37; color: black; font-weight: bold; border: none; 
@@ -19,7 +20,6 @@ style.innerHTML = `
     }
     .overlay { position: fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.8); z-index:2999; }
     
-    /* Home Button နဲ့ Nav ကို ကွယ်မသွားအောင် တိုးပေးထားခြင်း */
     .bottom-nav, footer, #bottom-menu { z-index: 5000 !important; }
 `;
 document.head.appendChild(style);
@@ -30,14 +30,18 @@ function renderCommunity() {
     const main = document.getElementById('main-root');
     const user = auth.currentUser;
 
+    // displayName null ဖြစ်နေရင် 'User' လို့ပြမယ်
+    const finalName = (user && user.displayName) ? user.displayName : "User";
+    const initial = finalName.charAt(0);
+
     main.innerHTML = `
         <div class="comm-wrapper">
             <h2 style="color: #D4AF37; text-align: center; margin-bottom: 20px;">🤝 Community Hub ✨</h2>
             ${user ? `
                 <div style="background: #1a1a1a; padding: 15px; border-radius: 15px; border: 1px solid #333; margin-bottom: 25px;">
                     <div style="display: flex; gap: 10px; align-items: center; margin-bottom: 10px;">
-                        <div class="initial-box">${user.displayName ? user.displayName.charAt(0) : 'U'}</div>
-                        <strong>${user.displayName} <br><small style="color:#4caf50; font-size:10px;">● Online</small></strong>
+                        <div class="initial-box">${initial}</div>
+                        <strong>${finalName} <br><small style="color:#4caf50; font-size:10px;">● Online</small></strong>
                     </div>
                     <textarea id="postInput" style="width:100%; background:#000; color:white; border:1px solid #444; padding:10px; border-radius:8px; height:80px; resize:none; box-sizing:border-box;" placeholder="ဘာပြောချင်လဲဗျာ..."></textarea>
                     <button onclick="savePost()" class="post-btn">🚀 POST တင်မယ်</button>
@@ -57,7 +61,7 @@ function savePost() {
     if (!text.trim()) return alert("စာအရင်ရေးပါဦး!");
 
     db.collection("tw_posts").add({
-        name: user.displayName || "User",
+        name: user.displayName || "User", // Database ထဲပို့ရင် null မဖြစ်အောင် စစ်ထားသည်
         uid: user.uid, 
         message: text,
         timestamp: firebase.firestore.FieldValue.serverTimestamp()
@@ -74,22 +78,25 @@ function loadPosts() {
         list.innerHTML = snapshot.docs.map(doc => {
             const p = doc.data();
             const time = p.timestamp ? new Date(p.timestamp.seconds * 1000).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}) : 'Just now';
-            const initial = p.name ? p.name.charAt(0) : '?';
+            
+            // Post တင်ထားသူရဲ့ နာမည် null ဖြစ်နေလျှင် 'User' ဟု ပြောင်းရန်
+            const displayName = p.name || "User";
+            const initial = displayName.charAt(0);
             const targetId = p.uid || "no-id";
 
             return `
                 <div class="post-card">
                     <div style="display:flex; align-items:center; gap:10px; margin-bottom:10px;">
-                        <div class="initial-box" onclick="openChat('${targetId}', '${p.name}')">${initial}</div>
+                        <div class="initial-box" onclick="openChat('${targetId}', '${displayName}')">${initial}</div>
                         <div>
-                            <strong style="color:#D4AF37; cursor:pointer;" onclick="openChat('${targetId}', '${p.name}')">${p.name}</strong>
+                            <strong style="color:#D4AF37; cursor:pointer;" onclick="openChat('${targetId}', '${displayName}')">${displayName}</strong>
                             <div style="color:#666; font-size:10px;">${time}</div>
                         </div>
                     </div>
                     <div style="font-size:15px; line-height:1.5; color:#eee; white-space: pre-wrap;">${p.message}</div>
                     <div style="margin-top:12px; display:flex; gap:20px; color:#666; font-size:13px; border-top:1px solid #222; padding-top:10px;">
                         <span style="cursor:pointer;" onclick="alert('Liked!')">❤️ Like</span>
-                        <span style="cursor:pointer;" onclick="openChat('${targetId}', '${p.name}')">💬 Message Send</span>
+                        <span style="cursor:pointer;" onclick="openChat('${targetId}', '${displayName}')">💬 Message Send</span>
                     </div>
                 </div>
             `;
@@ -105,12 +112,14 @@ function openChat(targetUid, targetName) {
     if (targetUid === "no-id") return alert("User ID မရှိသေးလို့ စာပို့မရပါဘူး။");
     if (user.uid === targetUid) return alert("ဒါက သင့် Profile ပါ!");
 
+    const finalTargetName = targetName || "User";
+
     const holder = document.getElementById('modal-holder');
     holder.innerHTML = `
         <div class="overlay" onclick="closeChat()"></div>
         <div class="chat-modal">
             <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px;">
-                <strong style="color:#D4AF37; font-size:18px;">${targetName}</strong>
+                <strong style="color:#D4AF37; font-size:18px;">${finalTargetName}</strong>
                 <span onclick="closeChat()" style="cursor:pointer; color:#888; font-size:24px;">&times;</span>
             </div>
             <div id="chat-box" style="height:200px; overflow-y:auto; background:#000; padding:10px; border-radius:8px; display:flex; flex-direction:column; gap:8px;">
@@ -165,6 +174,5 @@ function listenMsgs(targetUid) {
 }
 
 function closeChat() {
-    document.getElementById('modal-holder').in
-        nerHTML = "";
+    document.getElementById('modal-holder').innerHTML = "";
 }
