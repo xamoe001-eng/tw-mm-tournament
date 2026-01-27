@@ -5,59 +5,19 @@ window.renderLeagues = function() {
     const mainRoot = document.getElementById('main-root');
     if (!mainRoot) return;
 
-    // Table Design အတွက် CSS Inject လုပ်ခြင်း
-    const leagueStyle = document.createElement('style');
-    leagueStyle.innerHTML = `
-        .league-table {
-            width: 100%;
-            border-collapse: collapse;
-            margin-top: 10px;
-            color: #eee;
-            font-size: 0.8rem;
-        }
-        .league-table th {
-            text-align: center;
-            padding: 10px 5px;
-            color: #555;
-            font-size: 0.65rem;
-            text-transform: uppercase;
-            border-bottom: 1px solid #222;
-        }
-        .league-table td {
-            padding: 12px 5px;
-            border-bottom: 1px solid #1a1a1a;
-            vertical-align: middle;
-        }
-        .rank-cell { width: 30px; font-weight: 900; text-align: center; font-size: 0.9rem; }
-        .team-cell { text-align: left !important; padding-left: 10px !important; }
-        .team-title { font-weight: 800; color: #fff; display: block; max-width: 120px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-        .mgr-title { font-size: 0.65rem; color: #555; }
-        .stat-cell { text-align: center; width: 45px; font-family: 'Monaco', monospace; }
-        .gw-box { color: #00ff88; font-weight: bold; }
-        .pts-box { font-weight: 900; font-size: 1.1rem; }
-        
-        /* W-D-L Colors */
-        .w-text { color: #00ff88; font-weight: bold; } /* နိုင် - အစိမ်း */
-        .d-text { color: #ffcc00; font-weight: bold; } /* သရေ - အဝါ */
-        .l-text { color: #ff4d4d; font-weight: bold; } /* ရှုံး - အနီ */
-        .dash { color: #444; margin: 0 1px; }
-    `;
-    document.head.appendChild(leagueStyle);
-
     mainRoot.innerHTML = `
-        <div style="padding: 12px; max-width: 500px; margin: 0 auto; font-family: 'Inter', sans-serif; background: #000; min-height: 100vh;">
-            <div style="display: flex; background: #111; padding: 4px; border-radius: 12px; margin-bottom: 15px; border: 1px solid #222;">
+        <div style="padding: 12px; max-width: 500px; margin: 0 auto; font-family: 'Inter', sans-serif;">
+            <div style="display: flex; background: #161616; padding: 4px; border-radius: 50px; margin-bottom: 18px; border: 1px solid #222;">
                 <button id="btn-divA" onclick="window.filterDivision('A')" 
-                    style="flex: 1; padding: 12px; border: none; border-radius: 10px; font-weight: 800; cursor: pointer; transition: 0.3s; background: #D4AF37; color: #000; font-size: 0.75rem;">
+                    style="flex: 1; padding: 10px; border: none; border-radius: 40px; font-weight: 800; cursor: pointer; transition: 0.3s; background: #D4AF37; color: #000; font-size: 0.8rem;">
                     DIVISION 1
                 </button>
                 <button id="btn-divB" onclick="window.filterDivision('B')" 
-                    style="flex: 1; padding: 12px; border: none; border-radius: 10px; font-weight: 800; cursor: pointer; transition: 0.3s; background: transparent; color: #666; font-size: 0.75rem;">
+                    style="flex: 1; padding: 10px; border: none; border-radius: 40px; font-weight: 800; cursor: pointer; transition: 0.3s; background: transparent; color: #666; font-size: 0.8rem;">
                     DIVISION 2
                 </button>
             </div>
-            
-            <div id="league-content" style="background: #0a0a0a; border-radius: 15px; border: 1px solid #111; padding: 5px;"></div>
+            <div id="league-content"></div>
         </div>
     `;
     setTimeout(() => { window.filterDivision('A'); }, 100);
@@ -72,6 +32,7 @@ window.filterDivision = function(divTag) {
     const btnB = document.getElementById('btn-divB');
     if (!content) return;
 
+    // Button Toggle
     if (divTag === 'A') {
         btnA.style.background = '#D4AF37'; btnA.style.color = '#000';
         btnB.style.background = 'transparent'; btnB.style.color = '#666';
@@ -86,52 +47,56 @@ window.filterDivision = function(divTag) {
       .orderBy("gw_points", "desc") 
       .onSnapshot((snapshot) => {
         if (snapshot.empty) {
-            content.innerHTML = `<div style="text-align:center; padding:50px; color:#444; font-size: 0.8rem;">NO DATA AVAILABLE</div>`;
+            content.innerHTML = `<div style="text-align:center; padding:50px; color:#444;">NO DATA</div>`;
             return;
         }
 
         let html = `
-            <table class="league-table">
-                <thead>
-                    <tr>
-                        <th class="rank-cell">#</th>
-                        <th class="team-cell">TEAM / MGR</th>
-                        <th class="stat-cell">GW</th>
-                        <th class="stat-cell" style="width: 70px;">P / W-D-L</th>
-                        <th class="stat-cell">PTS</th>
-                    </tr>
-                </thead>
-                <tbody>
+            <div style="display: flex; justify-content: space-between; padding: 0 10px 10px; font-size: 0.65rem; color: #555; font-weight: 800; text-transform: uppercase;">
+                <span># TEAM INFO</span>
+                <span>GW / MATCH STATS / PTS</span>
+            </div>
         `;
 
         let pos = 1;
         snapshot.forEach((doc) => {
             const p = doc.data();
-            const rankColor = pos === 1 ? '#D4AF37' : (pos === 2 ? '#C0C0C0' : (pos === 3 ? '#CD7F32' : '#666'));
-            const ptsColor = divTag === 'A' ? '#D4AF37' : '#C0C0C0';
+            const rankColor = pos === 1 ? '#D4AF37' : (pos === 2 ? '#C0C0C0' : (pos === 3 ? '#CD7F32' : '#fff'));
 
             html += `
-                <tr>
-                    <td class="rank-cell" style="color: ${rankColor};">${pos}</td>
-                    <td class="team-cell">
-                        <span class="team-title">${p.team_name || 'Unknown'}</span>
-                        <span class="mgr-title">${p.manager_name || 'User'}</span>
-                    </td>
-                    <td class="stat-cell gw-box">${p.gw_points || 0}</td>
-                    <td class="stat-cell">
-                        <div style="color: #bbb; font-weight: bold; font-size: 0.75rem; margin-bottom: 2px;">${p.played || 0}</div>
-                        <div style="font-size: 0.65rem;">
-                            <span class="w-text">${p.wins || 0}</span><span class="dash">-</span><span class="d-text">${p.draws || 0}</span><span class="dash">-</span><span class="l-text">${p.losses || 0}</span>
+                <div style="background: #111; margin-bottom: 8px; border-radius: 12px; padding: 12px; display: flex; align-items: center; border: 1px solid #222;">
+                    <div style="width: 30px; font-weight: 900; font-size: 1rem; color: ${rankColor};">${pos}</div>
+                    
+                    <div style="flex: 1; min-width: 0; padding-right: 5px;">
+                        <div style="font-weight: 800; color: #fff; font-size: 0.85rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
+                            ${p.team_name}
                         </div>
-                    </td>
-                    <td class="stat-cell pts-box" style="color: ${ptsColor};">${p.h2h_points || 0}</td>
-                </tr>
+                        <div style="font-size: 0.65rem; color: #555;">${p.manager_name}</div>
+                    </div>
+
+                    <div style="text-align: right; min-width: 120px;">
+                        <div style="display: flex; justify-content: flex-end; gap: 3px; margin-bottom: 4px; font-size: 0.6rem; font-weight: 800;">
+                            <span style="color: #00ff88; padding: 1px 5px; background: rgba(0,255,136,0.15); border: 1px solid rgba(0,255,136,0.2); border-radius: 3px; margin-right: 2px;">GW: ${p.gw_points || 0}</span>
+                            <span style="color: #bbb; padding: 1px 4px; background: #222; border-radius: 3px;">P:${p.played || 0}</span>
+                        </div>
+                        
+                        <div style="display: flex; justify-content: flex-end; gap: 3px; margin-bottom: 4px; font-size: 0.55rem; opacity: 0.7;">
+                             <span style="color: #00ff88;">W:${p.wins || 0}</span>
+                             <span style="color: #ffcc00;">D:${p.draws || 0}</span>
+                             <span style="color: #ff4d4d;">L:${p.losses || 0}</span>
+                        </div>
+
+                        <div style="font-weight: 900; font-size: 1.1rem; color: ${divTag === 'A' ? '#D4AF37' : '#C0C0C0'};">
+                            ${p.h2h_points || 0}<span style="font-size: 0.55rem; margin-left: 2px; color: #666;">PTS</span>
+                        </div>
+                    </div>
+                </div>
             `;
             pos++;
         });
 
-        html += `</tbody></table>`;
         content.innerHTML = html;
-    
+  
+   
       });
 };
