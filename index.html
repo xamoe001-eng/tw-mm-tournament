@@ -19,7 +19,8 @@
 
     <header class="app-header">
         <div class="logo">TW MM <span>TOURNAMENT</span></div>
-        <div id="auth-root" class="auth-container"></div>
+        <div id="auth-root" class="auth-container">
+            </div>
     </header>
 
     <main id="main-root">
@@ -48,6 +49,24 @@
         </button>
     </nav>
 
+    <div id="profile-modal" class="modal-overlay" style="display:none;" onclick="closeProfile()">
+        <div class="modal-content profile-card" onclick="event.stopPropagation()">
+            <div class="profile-header">
+                <div class="profile-avatar">⚽</div>
+                <h2 id="prof-manager">Manager Name</h2>
+                <p id="prof-team" class="gold-text">Team Name</p>
+            </div>
+            <div class="profile-info">
+                <div class="info-item">
+                    <span class="label">FB/Contact:</span>
+                    <span id="prof-fb">-</span>
+                </div>
+            </div>
+            <button class="logout-btn" id="logout-section" onclick="handleLogout()" style="display:none;">LOGOUT</button>
+            <button class="close-btn" onclick="closeProfile()">CLOSE</button>
+        </div>
+    </div>
+
     <script src="https://www.gstatic.com/firebasejs/9.1.1/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.1.1/firebase-firestore-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.1.1/firebase-auth-compat.js"></script>
@@ -60,5 +79,6 @@
     <script src="js/live-hub.js"></script>
     <script src="js/app.js"></script>
 
-    </body>
+</body>
+
 </html>
