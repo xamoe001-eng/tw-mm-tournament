@@ -108,4 +108,4 @@ def sync_scouts():
     print("Top Scout Players Updated!")
 
 if __name__ == "__main__":
-sync_scouts.py()
+sync_scouts()
