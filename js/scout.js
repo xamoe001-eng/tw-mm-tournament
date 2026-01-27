@@ -38,7 +38,7 @@ window.switchTab = function(tab) {
 };
 
 /**
- * ၃။ Player Table (Sorting & Ownership ပါဝင်သော)
+ * ၃။ Player Table (Sorting အစုံပါဝင်သော)
  */
 async function loadPlayerData() {
     const container = document.getElementById('scout-container');
@@ -54,9 +54,9 @@ async function loadPlayerData() {
             <thead>
                 <tr>
                     <th align="left">PLAYER</th>
-                    <th onclick="window.reSortP('gw')" style="color:var(--gold)">GW ▽</th>
-                    <th onclick="window.reSortP('tot')" style="color:var(--gold)">TOT ▽</th>
-                    <th>OWN%</th>
+                    <th onclick="window.reSortP('gw')" style="color:var(--gold); cursor:pointer;">GW ▽</th>
+                    <th onclick="window.reSortP('tot')" style="color:var(--gold); cursor:pointer;">TOT ▽</th>
+                    <th onclick="window.reSortP('own')" style="color:var(--gold); cursor:pointer;">OWN% ▽</th>
                 </tr>
             </thead>
             <tbody id="p-body"></tbody>
@@ -80,13 +80,21 @@ function displayPlayerRows(data) {
     `).join('');
 }
 
+// Player Sorting Logic (GW, Total, Ownership)
 window.reSortP = (t) => {
-    const sorted = [...window.allPlayers].sort((a,b) => t==='gw' ? (b.form||0)-(a.form||0) : b.total_points-a.total_points);
+    let sorted = [...window.allPlayers];
+    if (t === 'gw') {
+        sorted.sort((a,b) => (b.form || b.gw_points || 0) - (a.form || a.gw_points || 0));
+    } else if (t === 'tot') {
+        sorted.sort((a,b) => b.total_points - a.total_points);
+    } else if (t === 'own') {
+        sorted.sort((a,b) => parseFloat(b.selected_by_percent || 0) - parseFloat(a.selected_by_percent || 0));
+    }
     displayPlayerRows(sorted);
 };
 
 /**
- * ၄။ Player Detail Popup (Next 3 Matches ပါဝင်သော)
+ * ၄။ Player Detail Popup
  */
 window.showPDetail = (id) => {
     const p = window.allPlayers.find(x => x.id === id);
@@ -147,8 +155,8 @@ window.fetchL = async (key) => {
             <thead>
                 <tr>
                     <th align="left">TEAM/MANAGER</th>
-                    <th onclick="window.reSortL('gw')" style="color:var(--gold)">GW</th>
-                    <th onclick="window.reSortL('tot')" style="color:var(--gold)">TOT ▽</th>
+                    <th onclick="window.reSortL('gw')" style="color:var(--gold); cursor:pointer;">GW</th>
+                    <th onclick="window.reSortL('tot')" style="color:var(--gold); cursor:pointer;">TOT ▽</th>
                 </tr>
             </thead>
             <tbody id="l-body"></tbody>
