@@ -24,7 +24,7 @@ window.renderLeagues = function() {
 };
 
 /**
- * ၂။ Division အလိုက် ဒေတာပြသခြင်း (အရောင်များကို Badge ပုံစံဖြင့် ပြင်ထားသည်)
+ * ၂။ Division အလိုက် ဒေတာပြသခြင်း
  */
 window.filterDivision = function(divTag) {
     const content = document.getElementById('league-content');
@@ -54,7 +54,7 @@ window.filterDivision = function(divTag) {
         let html = `
             <div style="display: flex; justify-content: space-between; padding: 0 10px 10px; font-size: 0.65rem; color: #555; font-weight: 800; text-transform: uppercase;">
                 <span># TEAM INFO</span>
-                <span>MATCH STATS / PTS</span>
+                <span>GW / MATCH STATS / PTS</span>
             </div>
         `;
 
@@ -74,15 +74,20 @@ window.filterDivision = function(divTag) {
                         <div style="font-size: 0.65rem; color: #555;">${p.manager_name}</div>
                     </div>
 
-                    <div style="text-align: right; min-width: 100px;">
+                    <div style="text-align: right; min-width: 120px;">
                         <div style="display: flex; justify-content: flex-end; gap: 3px; margin-bottom: 4px; font-size: 0.6rem; font-weight: 800;">
+                            <span style="color: #00ff88; padding: 1px 5px; background: rgba(0,255,136,0.15); border: 1px solid rgba(0,255,136,0.2); border-radius: 3px; margin-right: 2px;">GW: ${p.gw_points || 0}</span>
                             <span style="color: #bbb; padding: 1px 4px; background: #222; border-radius: 3px;">P:${p.played || 0}</span>
-                            <span style="color: #00ff88; padding: 1px 4px; background: rgba(0,255,136,0.1); border-radius: 3px;">W:${p.wins || 0}</span>
-                            <span style="color: #ffcc00; padding: 1px 4px; background: rgba(255,204,0,0.1); border-radius: 3px;">D:${p.draws || 0}</span>
-                            <span style="color: #ff4d4d; padding: 1px 4px; background: rgba(255,77,77,0.1); border-radius: 3px;">L:${p.losses || 0}</span>
                         </div>
+                        
+                        <div style="display: flex; justify-content: flex-end; gap: 3px; margin-bottom: 4px; font-size: 0.55rem; opacity: 0.7;">
+                             <span style="color: #00ff88;">W:${p.wins || 0}</span>
+                             <span style="color: #ffcc00;">D:${p.draws || 0}</span>
+                             <span style="color: #ff4d4d;">L:${p.losses || 0}</span>
+                        </div>
+
                         <div style="font-weight: 900; font-size: 1.1rem; color: ${divTag === 'A' ? '#D4AF37' : '#C0C0C0'};">
-                            ${p.h2h_points || 0}<span style="font-size: 0.55rem; margin-left: 2px; color: #444;">PTS</span>
+                            ${p.h2h_points || 0}<span style="font-size: 0.55rem; margin-left: 2px; color: #666;">PTS</span>
                         </div>
                     </div>
                 </div>
@@ -91,6 +96,6 @@ window.filterDivision = function(divTag) {
         });
 
         content.innerHTML = html;
-    
+  
       });
 };
