@@ -1,4 +1,5 @@
 // ၁။ Live Hub စာမျက်နှာကို စတင်ဖန်တီးခြင်း
+// ၁။ Live Hub စာမျက်နှာကို စတင်ဖန်တီးခြင်း
 window.renderLiveHub = function() {
     const mainRoot = document.getElementById('main-root');
     if (!mainRoot) return;
@@ -20,18 +21,16 @@ window.renderLiveHub = function() {
             </div>
         </div>
     `;
-    // ပထမဆုံးဝင်ဝင်ချင်း League Matches ကို ပြမည်
     window.loadFixtures('league');
 };
 
-// ၂။ Fixtures များကို ဆွဲထုတ်ပြီး Live အမှတ်များနှင့် ချိတ်ဆက်ပြသခြင်း
+// ၂။ Fixtures များကို ဆွဲထုတ်ပြီး ပြသခြင်း
 window.loadFixtures = function(type) {
     const content = document.getElementById('live-content');
     const navLeague = document.getElementById('nav-league');
     const navFA = document.getElementById('nav-fa');
     if (!content) return;
 
-    // Button UI Update
     if (type === 'league') {
         navLeague.style.background = '#D4AF37'; navLeague.style.color = '#000';
         navFA.style.background = '#222'; navFA.style.color = '#888';
@@ -42,7 +41,6 @@ window.loadFixtures = function(type) {
 
     content.innerHTML = `<div style="text-align:center; padding:50px; color:#555;">⌛ Fetching Data...</div>`;
 
-    // Fixtures နဲ့ Standings ဒေတာကို တစ်ပြိုင်နက်ဖတ်ခြင်း
     db.collection("fixtures")
       .where("type", "==", type)
       .onSnapshot((fixturesSnapshot) => {
@@ -69,14 +67,20 @@ window.loadFixtures = function(type) {
                 const homeStyle = homePts > awayPts ? "color:#00ff88; font-weight:900;" : "color:#fff;";
                 const awayStyle = awayPts > homePts ? "color:#00ff88; font-weight:900;" : "color:#fff;";
                 
-                // Division စာသားကို ခွဲခြားခြင်း
-                const divLabel = type === 'league' ? `DIV: ${f.division || 'N/A'}` : `TW FA CUP`;
+                // Division Label ကို ပိုလင်းအောင်နဲ့ ပိုစစ်ဆေးရလွယ်အောင် ပြင်ခြင်း
+                let divisionDisplay = "";
+                if (type === 'league') {
+                    const divName = (f.division || "A").toUpperCase(); // Division အမြဲ စာလုံးကြီးပြမယ်
+                    divisionDisplay = `<span style="background: rgba(212,175,55,0.1); color: #D4AF37; padding: 2px 8px; border-radius: 4px; border: 1px solid rgba(212,175,55,0.3);">DIV: ${divName}</span>`;
+                } else {
+                    divisionDisplay = `<span style="background: rgba(0,255,136,0.1); color: #00ff88; padding: 2px 8px; border-radius: 4px; border: 1px solid rgba(0,255,136,0.3);">TW FA CUP</span>`;
+                }
 
                 html += `
-                    <div style="background:#111; border-radius:16px; padding:18px; margin-bottom:12px; border: 1px solid #222; position:relative; overflow:hidden;">
-                        <div style="display:flex; justify-content:space-between; margin-bottom:15px; font-size:0.6rem; font-weight:800; color:#444; text-transform:uppercase;">
-                            <span>GW ${f.gameweek}</span>
-                            <span style="color:${type === 'league' ? '#D4AF37' : '#00ff88'}">${divLabel}</span>
+                    <div style="background:#111; border-radius:16px; padding:18px; margin-bottom:12px; border: 1px solid #222; position:relative;">
+                        <div style="display:flex; justify-content:space-between; margin-bottom:15px; font-size:0.65rem; font-weight:800; text-transform:uppercase;">
+                            <span style="color:#666;">GAMWEEK ${f.gameweek || '??'}</span>
+                            ${divisionDisplay}
                         </div>
 
                         <div style="display:flex; justify-content:space-between; align-items:center;">
@@ -99,7 +103,6 @@ window.loadFixtures = function(type) {
                     </div>
                 `;
             });
-
             content.innerHTML = html;
         }
                                                     );
