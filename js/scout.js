@@ -1,257 +1,220 @@
 /**
- * Scout Tab Main Logic
+ * ၁။ Scout Tab Main Render
  */
 window.renderScout = async function() {
     const mainRoot = document.getElementById('main-root');
-    mainRoot.innerHTML = `<div class="loading"><div class="spinner"></div><p>Scout Data များ ရယူနေသည်...</p></div>`;
+    mainRoot.innerHTML = `<div class="spinner"></div>`;
 
-    try {
-        mainRoot.innerHTML = `
-            <div id="scout-header" style="margin-bottom: 20px;">
-                <h3 class="gold-text">🔭 SCOUT CENTER</h3>
-                <div style="display: flex; gap: 10px; margin-bottom: 15px;">
-                    <button id="btn-scout-players" class="primary-btn" style="flex:1; font-size:0.8rem;" onclick="window.showScoutSection('players')">PLAYER SCOUT</button>
-                    <button id="btn-scout-leagues" class="primary-btn" style="flex:1; font-size:0.8rem; background:#222; color:#fff;" onclick="window.showScoutSection('leagues')">LEAGUE SCOUT</button>
-                </div>
+    mainRoot.innerHTML = `
+        <div id="scout-header" style="margin-bottom: 20px;">
+            <h3 class="gold-text">🔭 SCOUT CENTER</h3>
+            <div style="display: flex; gap: 8px; margin-bottom: 15px;">
+                <button id="btn-p" class="primary-btn" style="flex:1; font-size:0.75rem;" onclick="window.switchTab('p')">PLAYER SCOUT</button>
+                <button id="btn-l" class="primary-btn" style="flex:1; font-size:0.75rem; background:#222; color:#888;" onclick="window.switchTab('l')">LEAGUE SCOUT</button>
             </div>
-            <div id="scout-content-area"></div>
-        `;
-        window.showScoutSection('players');
-    } catch (e) { console.error(e); window.showToast("Data Load Error", "error"); }
+        </div>
+        <div id="scout-container"></div>
+    `;
+    window.switchTab('p'); 
 };
 
 /**
- * Section Switcher
+ * ၂။ Tab Switcher Logic
  */
-window.showScoutSection = function(section) {
-    const container = document.getElementById('scout-content-area');
-    const btnP = document.getElementById('btn-scout-players');
-    const btnL = document.getElementById('btn-scout-leagues');
+window.switchTab = function(tab) {
+    const container = document.getElementById('scout-container');
+    const btnP = document.getElementById('btn-p');
+    const btnL = document.getElementById('btn-l');
 
-    if(section === 'players') {
+    if(tab === 'p') {
         btnP.style.background = "var(--gold)"; btnP.style.color = "#000";
-        btnL.style.background = "#222"; btnL.style.color = "#fff";
-        renderPlayerTable();
+        btnL.style.background = "#222"; btnL.style.color = "#888";
+        loadPlayerData();
     } else {
         btnL.style.background = "var(--gold)"; btnL.style.color = "#000";
-        btnP.style.background = "#222"; btnP.style.color = "#fff";
-        renderLeagueSection();
+        btnP.style.background = "#222"; btnP.style.color = "#888";
+        loadLeagueData();
     }
 };
 
 /**
- * ၂။ Player Table (Ownership ပါဝင်သော)
+ * ၃။ Player Table (Sorting & Ownership ပါဝင်သော)
  */
-async function renderPlayerTable() {
-    const container = document.getElementById('scout-content-area');
-    container.innerHTML = `<div class="spinner" style="margin:20px auto;"></div>`;
+async function loadPlayerData() {
+    const container = document.getElementById('scout-container');
+    container.innerHTML = `<div class="spinner"></div>`;
 
     const snapshot = await db.collection("scout_players").orderBy("total_points", "desc").limit(50).get();
     let players = [];
     snapshot.forEach(doc => players.push({id: doc.id, ...doc.data()}));
-    window.currentPlayers = players;
+    window.allPlayers = players;
 
     container.innerHTML = `
         <table class="scout-table">
             <thead>
                 <tr>
                     <th align="left">PLAYER</th>
-                    <th onclick="window.sortPlayer('gw')" style="cursor:pointer">GW ▽</th>
-                    <th onclick="window.sortPlayer('total')" style="cursor:pointer">TOT ▽</th>
+                    <th onclick="window.reSortP('gw')" style="color:var(--gold)">GW ▽</th>
+                    <th onclick="window.reSortP('tot')" style="color:var(--gold)">TOT ▽</th>
                     <th>OWN%</th>
-                    <th>PRICE</th>
                 </tr>
             </thead>
-            <tbody id="player-body"></tbody>
+            <tbody id="p-body"></tbody>
         </table>
     `;
-    renderPlayerRows(players);
+    displayPlayerRows(players);
 }
 
-function renderPlayerRows(players) {
-    const body = document.getElementById('player-body');
-    body.innerHTML = players.map(p => `
-        <tr onclick="window.showPlayerDetail('${p.id}')">
+function displayPlayerRows(data) {
+    const body = document.getElementById('p-body');
+    body.innerHTML = data.map(p => `
+        <tr onclick="window.showPDetail('${p.id}')">
             <td>
-                <div style="font-weight:bold;">${p.name}</div>
-                <div style="font-size:0.6rem; color:#888;">${p.team} | ${p.pos}</div>
+                <div style="font-weight:800; font-size:0.85rem;">${p.name}</div>
+                <div style="font-size:0.6rem; color:#666;">${p.team} | ${p.pos} | £${p.price}m</div>
             </td>
             <td align="center">${p.form || p.gw_points || 0}</td>
-            <td align="center" style="color:var(--gold); font-weight:bold;">${p.total_points}</td>
-            <td align="center" style="font-size:0.75rem;">${p.selected_by_percent || '0.0'}%</td>
-            <td align="center">£${p.price}m</td>
+            <td align="center" style="font-weight:bold;">${p.total_points || 0}</td>
+            <td align="center" style="font-size:0.7rem; color:var(--gold);">${p.selected_by_percent || '0.0'}%</td>
         </tr>
     `).join('');
 }
 
-window.sortPlayer = (type) => {
-    const sorted = [...window.currentPlayers].sort((a, b) => 
-        type === 'gw' ? (b.form || b.gw_points) - (a.form || a.gw_points) : b.total_points - a.total_points
-    );
-    renderPlayerRows(sorted);
+window.reSortP = (t) => {
+    const sorted = [...window.allPlayers].sort((a,b) => t==='gw' ? (b.form||0)-(a.form||0) : b.total_points-a.total_points);
+    displayPlayerRows(sorted);
 };
 
 /**
- * ၃။ Player Popup (Stats + Next 3 Matches)
+ * ၄။ Player Detail Popup (Next 3 Matches ပါဝင်သော)
  */
-window.showPlayerDetail = async (id) => {
-    const p = window.currentPlayers.find(x => x.id === id);
+window.showPDetail = (id) => {
+    const p = window.allPlayers.find(x => x.id === id);
     const modal = document.createElement('div');
     modal.className = 'modal-overlay';
     modal.onclick = () => modal.remove();
-    
     modal.innerHTML = `
-        <div class="modal-content profile-card" style="max-width:360px;" onclick="event.stopPropagation()">
-            <h2 class="gold-text" style="margin:0;">${p.name}</h2>
-            <p style="color:#888; font-size:0.8rem; margin-bottom:15px;">${p.team} - ${p.pos}</p>
-            
+        <div class="profile-card" style="max-width:350px;" onclick="event.stopPropagation()">
+            <h3 class="gold-text">${p.name}</h3>
             <div class="profile-info">
-                <div class="info-item"><span class="label">Goals:</span> <span class="val">${p.goals || 0}</span></div>
-                <div class="info-item"><span class="label">Assists:</span> <span class="val">${p.assists || 0}</span></div>
-                <div class="info-item"><span class="label">Bonus:</span> <span class="val">${p.bonus || 0}</span></div>
-                <div class="info-item"><span class="label">CS:</span> <span class="val">${p.clean_sheets || 0}</span></div>
-                <div class="info-item"><span class="label">xG:</span> <span class="val">${p.xg || 0.0}</span></div>
-                <div class="info-item"><span class="label">ICT:</span> <span class="val">${p.ict || 0.0}</span></div>
+                <div class="info-item"><span class="label">Goals:</span> <span class="val">${p.goals||0}</span></div>
+                <div class="info-item"><span class="label">Assists:</span> <span class="val">${p.assists||0}</span></div>
+                <div class="info-item"><span class="label">Bonus:</span> <span class="val">${p.bonus||0}</span></div>
+                <div class="info-item"><span class="label">xG:</span> <span class="val">${p.xg||0.0}</span></div>
             </div>
-
-            <h4 class="gold-text" style="text-align:left; margin:15px 0 8px 0; font-size:0.8rem;">🗓 NEXT 3 MATCHES</h4>
-            <div style="display:flex; gap:8px; margin-bottom:20px;">
-                ${(p.next_fixtures || ['TBA', 'TBA', 'TBA']).slice(0,3).map(f => `
-                    <div style="flex:1; background:#000; padding:8px; border-radius:8px; border:1px solid #333; font-size:0.7rem;">
-                        <div style="font-weight:bold;">${f.opponent || f}</div>
+            <h4 class="gold-text" style="text-align:left; font-size:0.7rem; margin:15px 0 5px;">🗓 NEXT 3 MATCHES</h4>
+            <div style="display:flex; gap:5px;">
+                ${(p.next_fixtures || ['TBA','TBA','TBA']).slice(0,3).map(f => `
+                    <div style="flex:1; background:#000; padding:5px; border-radius:5px; font-size:0.6rem; border:1px solid #222;">
+                        ${f.opponent || f}
                     </div>
                 `).join('')}
             </div>
-            <button class="primary-btn" onclick="this.parentElement.parentElement.remove()">CLOSE</button>
+            <button class="primary-btn" style="margin-top:20px;" onclick="this.parentElement.parentElement.remove()">CLOSE</button>
         </div>
     `;
     document.body.appendChild(modal);
 };
 
 /**
- * ၄။ League Table
+ * ၅။ League Section & Pitch View
  */
-async function renderLeagueSection() {
-    const container = document.getElementById('scout-content-area');
+async function loadLeagueData() {
+    const container = document.getElementById('scout-container');
     container.innerHTML = `
-        <div style="display:flex; gap:5px; margin-bottom:15px;">
-            <button id="l-tab-a" class="primary-btn" style="flex:1; font-size:0.7rem;" onclick="window.fetchLeagueTable('League_A')">LEAGUE A</button>
-            <button id="l-tab-b" class="primary-btn" style="flex:1; font-size:0.7rem; background:#222;" onclick="window.fetchLeagueTable('League_B')">LEAGUE B</button>
+        <div style="display:flex; gap:5px; margin-bottom:10px;">
+            <button id="l-a" class="primary-btn" style="height:35px; font-size:0.7rem;" onclick="window.fetchL('League_A')">LEAGUE A</button>
+            <button id="l-b" class="primary-btn" style="height:35px; font-size:0.7rem; background:#222;" onclick="window.fetchL('League_B')">LEAGUE B</button>
         </div>
-        <div id="league-table-root"></div>
+        <div id="l-root"></div>
     `;
-    window.fetchLeagueTable('League_A');
+    window.fetchL('League_A');
 }
 
-window.fetchLeagueTable = async (leagueKey) => {
-    const root = document.getElementById('league-table-root');
-    document.getElementById('l-tab-a').style.background = leagueKey === 'League_A' ? 'var(--gold)' : '#222';
-    document.getElementById('l-tab-b').style.background = leagueKey === 'League_B' ? 'var(--gold)' : '#222';
-
-    root.innerHTML = `<div class="spinner" style="margin:20px auto;"></div>`;
-    const snapshot = await db.collection(`scout_${leagueKey}`).orderBy("total_points", "desc").limit(50).get();
+window.fetchL = async (key) => {
+    const root = document.getElementById('l-root');
+    document.getElementById('l-a').style.background = key==='League_A' ? 'var(--gold)' : '#222';
+    document.getElementById('l-b').style.background = key==='League_B' ? 'var(--gold)' : '#222';
+    
+    root.innerHTML = `<div class="spinner"></div>`;
+    const snap = await db.collection(`scout_${key}`).orderBy("total_points", "desc").limit(50).get();
     let teams = [];
-    snapshot.forEach(doc => teams.push(doc.data()));
-    window.currentLeagues = teams;
+    snap.forEach(d => teams.push(d.data()));
+    window.allLeagues = teams;
 
     root.innerHTML = `
         <table class="scout-table">
             <thead>
                 <tr>
                     <th align="left">TEAM/MANAGER</th>
-                    <th onclick="window.sortLeague('gw')" style="cursor:pointer">GW ▽</th>
-                    <th onclick="window.sortLeague('total')" style="cursor:pointer">TOT ▽</th>
+                    <th onclick="window.reSortL('gw')" style="color:var(--gold)">GW</th>
+                    <th onclick="window.reSortL('tot')" style="color:var(--gold)">TOT ▽</th>
                 </tr>
             </thead>
-            <tbody id="league-body"></tbody>
+            <tbody id="l-body"></tbody>
         </table>
     `;
-    renderLeagueRows(teams);
+    displayLeagueRows(teams);
 };
 
-window.sortLeague = (type) => {
-    const sorted = [...window.currentLeagues].sort((a, b) => 
-        type === 'gw' ? b.gw_points - a.gw_points : b.total_points - a.total_points
-    );
-    renderLeagueRows(sorted);
-};
-
-function renderLeagueRows(teams) {
-    const body = document.getElementById('league-body');
-    body.innerHTML = teams.map(t => `
-        <tr onclick="window.showTeamPitch('${t.entry_id}')">
+function displayLeagueRows(data) {
+    const body = document.getElementById('l-body');
+    body.innerHTML = data.map(t => `
+        <tr onclick="window.showTPitch('${t.entry_id}')">
             <td>
                 <div style="font-weight:bold;">${t.team_name}</div>
-                <div style="font-size:0.65rem; color:#888;">${t.manager}</div>
+                <div style="font-size:0.65rem; color:#666;">${t.manager}</div>
             </td>
-            <td align="center">${t.gw_points}</td>
-            <td align="center" style="color:var(--gold); font-weight:bold;">${t.total_points}</td>
+            <td align="center">${t.gw_points || 0}</td>
+            <td align="center" style="color:var(--gold); font-weight:800;">${t.total_points || 0}</td>
         </tr>
     `).join('');
 }
 
-/**
- * ၅။ Correct Formation Pitch View
- */
-window.showTeamPitch = (entryId) => {
-    const t = window.currentLeagues.find(x => x.entry_id == entryId);
+window.reSortL = (t) => {
+    const sorted = [...window.allLeagues].sort((a,b) => t==='gw' ? (b.gw_points||0)-(a.gw_points||0) : b.total_points-a.total_points);
+    displayLeagueRows(sorted);
+};
+
+window.showTPitch = (id) => {
+    const t = window.allLeagues.find(x => x.entry_id == id);
     const modal = document.createElement('div');
     modal.className = 'modal-overlay';
     modal.onclick = () => modal.remove();
 
     const lineup = t.lineup || [];
     const starters = lineup.slice(0, 11);
-    const subs = lineup.slice(11, 15);
-
-    // Filter by position for proper pitch rows
     const gkp = starters.filter(p => p.pos === 'GKP');
     const def = starters.filter(p => p.pos === 'DEF');
     const mid = starters.filter(p => p.pos === 'MID');
     const fwd = starters.filter(p => p.pos === 'FWD');
 
     modal.innerHTML = `
-        <div class="modal-content profile-card" style="width:98%; max-width:450px; background:#0a2d0a; border: 2px solid var(--gold); padding:15px;" onclick="event.stopPropagation()">
-            <div style="display:flex; justify-content:space-between; margin-bottom:10px; text-align:left;">
-                <div>
-                    <h4 style="margin:0;">${t.team_name}</h4>
-                    <div style="font-size:0.65rem; color:#ccc;">Hit: <span style="color:#ff4d4d;">${t.transfer_cost}</span></div>
-                </div>
-                <div style="background:var(--gold); color:#000; padding:2px 8px; border-radius:5px; font-weight:bold; font-size:0.7rem;">
-                    ${t.active_chip || 'No Chip'}
-                </div>
+        <div class="profile-card" style="width:95%; max-width:450px; background:#072107; border:1px solid var(--gold);" onclick="event.stopPropagation()">
+            <div style="display:flex; justify-content:space-between; margin-bottom:10px;">
+                <div style="text-align:left;"><h4 style="margin:0;">${t.team_name}</h4><small>Hit: ${t.transfer_cost || 0}</small></div>
+                <div style="background:var(--gold); color:#000; padding:2px 8px; border-radius:4px; font-weight:800; font-size:0.7rem;">${t.active_chip || 'No Chip'}</div>
             </div>
-
-            <div class="pitch-container" style="display:flex; flex-direction:column-reverse; justify-content:space-around; min-height:320px; border:1px solid #ffffff22; border-radius:10px;">
-                <div class="pitch-row">${renderPitchPlayers(fwd)}</div>
-                <div class="pitch-row">${renderPitchPlayers(mid)}</div>
-                <div class="pitch-row">${renderPitchPlayers(def)}</div>
-                <div class="pitch-row">${renderPitchPlayers(gkp)}</div>
+            <div class="pitch-container" style="display:flex; flex-direction:column-reverse; gap:10px; min-height:300px; padding:10px; background:rgba(255,255,255,0.05); border-radius:10px;">
+                <div class="pitch-row">${renderPlayers(fwd)}</div>
+                <div class="pitch-row">${renderPlayers(mid)}</div>
+                <div class="pitch-row">${renderPlayers(def)}</div>
+                <div class="pitch-row">${renderPlayers(gkp)}</div>
             </div>
-
-            <div style="margin-top:10px; background:rgba(0,0,0,0.4); padding:8px; border-radius:8px;">
-                <div style="display:flex; justify-content:center; gap:15px;">
-                    ${subs.map(p => `
-                        <div style="text-align:center;">
-                            <div style="font-size:1rem;">👕</div>
-                            <div style="font-size:0.5rem; width:45px; overflow:hidden;">${p.name}</div>
-                        </div>
-                    `).join('')}
-                </div>
+            <div style="margin-top:10px; display:flex; justify-content:center; gap:8px;">
+                ${lineup.slice(11,15).map(p => `<div style="font-size:0.5rem; text-align:center;">👕<br>${p.name}</div>`).join('')}
             </div>
-            <button class="primary-btn" style="margin-top:15px; background:#fff; color:#000;" onclick="this.parentElement.parentElement.remove()">CLOSE</button>
+            <button class="primary-btn" style="margin-top:15px; background:#fff; color:#000;" onclick="this.parentElement.parentElement.remove()">BACK</button>
         </div>
     `;
     document.body.appendChild(modal);
 };
 
-function renderPitchPlayers(players) {
-    return players.map(p => `
+function renderPlayers(arr) {
+    return arr.map(p => `
         <div style="text-align:center; width:60px;">
-            <div style="font-size:1.2rem; position:relative;">
-                ${p.is_captain ? '<span style="position:absolute; top:-5px; right:5px; font-size:0.6rem;">©️</span>' : ''}
-                👕
-            </div>
-            <div style="background:#000; color:#fff; font-size:0.5rem; padding:1px 2px; border-radius:2px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${p.name}</div>
+            <div style="font-size:1.1rem; position:relative;">${p.is_captain?'👑':''}👕</div>
+            <div style="background:#000; color:#fff; font-size:0.5rem; white-space:nowrap; overflow:hidden;">${p.name}</div>
             <div style="font-size:0.55rem; color:var(--gold); font-weight:bold;">${p.points}pts</div>
         </div>
     `).join('');
