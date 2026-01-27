@@ -39,7 +39,6 @@ window.switchTab = function(tab) {
 async function loadPlayerData() {
     const container = document.getElementById('scout-container');
     container.innerHTML = `<div class="spinner"></div>`;
-    // Player data တွင် gw_points ပါဝင်ရန် Python ဘက်မှ event_points ကို map လုပ်ထားရမည်
     const snapshot = await db.collection("scout_players").orderBy("total_points", "desc").limit(100).get();
     let players = [];
     snapshot.forEach(doc => players.push({id: doc.id, ...doc.data()}));
@@ -69,7 +68,8 @@ function displayPlayerRows(data) {
                 <div style="font-weight:800; font-size:0.85rem;">${p.name}</div>
                 <div style="font-size:0.6rem; color:#666;">${p.team} | ${p.pos} | £${p.price}m</div>
             </td>
-            <td align="center">${p.gw_points || 0}</td> <td align="center" style="font-weight:bold;">${p.total_points || 0}</td>
+            <td align="center">${p.gw_points || 0}</td> 
+            <td align="center" style="font-weight:bold;">${p.total_points || 0}</td>
             <td align="center" style="font-size:0.75rem; color:var(--gold);">${p.ownership || '0.0'}%</td>
         </tr>
     `).join('');
@@ -83,7 +83,6 @@ window.reSortP = (t) => {
     displayPlayerRows(sorted);
 };
 
-// Player Detail Popup
 window.showPDetail = (id) => {
     const p = window.allPlayers.find(x => x.id === id);
     const modal = document.createElement('div');
@@ -188,7 +187,7 @@ window.reSortL = (t) => {
 };
 
 /**
- * ၅။ Pitch View (Formation & Captaincy logic)
+ * ၅။ Pitch View (Updated: V-Captain & Bigger Bench)
  */
 window.showTPitch = (id) => {
     const t = window.allLeagues.find(x => x.entry_id == id);
@@ -204,31 +203,31 @@ window.showTPitch = (id) => {
         <div class="profile-card" style="width:98%; max-width:400px; padding:15px; background:#041a04; border:1px solid #1a3d1a;" onclick="event.stopPropagation()">
             <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:10px;">
                 <div>
-                    <h4 style="margin:0; font-size:1rem;">${t.team_name}</h4>
+                    <h4 style="margin:0; font-size:1rem; color:var(--gold);">${t.team_name}</h4>
                     <span style="font-size:0.65rem; color:#888;">Hit: <span style="color:#ff4444;">-${t.transfer_cost || 0}</span> | GW: ${t.gw_points}</span>
                 </div>
-                <div style="background:${t.active_chip?'var(--gold)':'#222'}; color:${t.active_chip?'#000':'#888'}; padding:3px 8px; border-radius:4px; font-weight:800; font-size:0.65rem;">
+                <div style="background:${t.active_chip?'var(--gold)':'#222'}; color:${t.active_chip?'#000':'#888'}; padding:4px 10px; border-radius:4px; font-weight:900; font-size:0.7rem;">
                     ${t.active_chip ? t.active_chip.toUpperCase() : 'NO CHIP'}
                 </div>
             </div>
 
-            <div class="pitch-container" style="background: linear-gradient(to bottom, #0a4d0a 0%, #063306 100%); border-radius:8px; padding:15px 5px; min-height:360px; display:flex; flex-direction:column; justify-content:space-around; border:1px solid #1a3d1a; box-shadow: inset 0 0 50px rgba(0,0,0,0.5);">
-                <div style="display:flex; justify-content:center; gap:5px;">${renderPitchPlayers(starters.filter(p=>p.pos==='FWD'))}</div>
-                <div style="display:flex; justify-content:center; gap:5px;">${renderPitchPlayers(starters.filter(p=>p.pos==='MID'))}</div>
-                <div style="display:flex; justify-content:center; gap:5px;">${renderPitchPlayers(starters.filter(p=>p.pos==='DEF'))}</div>
-                <div style="display:flex; justify-content:center; gap:5px;">${renderPitchPlayers(starters.filter(p=>p.pos==='GKP'))}</div>
+            <div class="pitch-container" style="background: linear-gradient(to bottom, #0a4d0a 0%, #063306 100%); border-radius:8px; padding:20px 5px; min-height:380px; display:flex; flex-direction:column; justify-content:space-around; border:1px solid #1a3d1a; box-shadow: inset 0 0 50px rgba(0,0,0,0.5);">
+                <div style="display:flex; justify-content:center; gap:8px;">${renderPitchPlayers(starters.filter(p=>p.pos==='FWD'))}</div>
+                <div style="display:flex; justify-content:center; gap:8px;">${renderPitchPlayers(starters.filter(p=>p.pos==='MID'))}</div>
+                <div style="display:flex; justify-content:center; gap:8px;">${renderPitchPlayers(starters.filter(p=>p.pos==='DEF'))}</div>
+                <div style="display:flex; justify-content:center; gap:8px;">${renderPitchPlayers(starters.filter(p=>p.pos==='GKP'))}</div>
             </div>
 
-            <div style="margin-top:10px; background:rgba(0,0,0,0.3); padding:8px; border-radius:6px; display:flex; justify-content:center; gap:10px; border:1px solid #111;">
+            <div style="margin-top:12px; background:rgba(0,0,0,0.4); padding:12px; border-radius:8px; display:flex; justify-content:space-between; border:1px solid #222; gap:5px;">
                 ${bench.map(p => `
-                    <div style="text-align:center; opacity:0.7;">
-                        <div style="font-size:1rem;">👕</div>
-                        <div style="font-size:0.5rem; color:#ccc;">${p.name.substring(0,8)}</div>
-                        <div style="font-size:0.55rem; color:var(--gold);">${p.points}</div>
+                    <div style="text-align:center; flex:1;">
+                        <div style="font-size:1.5rem; filter: grayscale(100%);">👕</div>
+                        <div style="font-size:0.6rem; color:#fff; font-weight:bold; margin-top:3px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${p.name}</div>
+                        <div style="font-size:0.7rem; color:var(--gold); font-weight:900;">${p.points}</div>
                     </div>
                 `).join('')}
             </div>
-            <button class="primary-btn" style="margin-top:15px; width:100%; background:#fff; color:#000;" onclick="this.parentElement.parentElement.remove()">BACK</button>
+            <button class="primary-btn" style="margin-top:15px; width:100%; background:#fff; color:#000; font-weight:bold; height:45px;" onclick="this.parentElement.parentElement.remove()">BACK</button>
         </div>
     `;
     document.body.appendChild(modal);
@@ -236,30 +235,28 @@ window.showTPitch = (id) => {
 
 function renderPitchPlayers(arr) {
     return arr.map(p => {
-        // Captaincy Marker
-        let capIcon = '';
+        let capBadge = '';
         if (p.is_captain) {
-            const badgeLabel = p.multiplier === 3 ? 'TC' : 'C';
-            const badgeBg = p.multiplier === 3 ? '#ff4444' : '#000';
-            capIcon = `<span style="position:absolute; top:-10px; right:2px; font-size:0.6rem; background:${badgeBg}; color:var(--gold); padding:1px 3px; border-radius:3px; border:1px solid var(--gold); font-weight:900; z-index:2;">${badgeLabel}</span>`;
-        } else if (p.is_vice_captain) {
-            capIcon = `<span style="position:absolute; top:-10px; right:2px; font-size:0.6rem; background:#333; color:#fff; padding:1px 3px; border-radius:3px; border:1px solid #999; font-weight:900; z-index:2;">V</span>`;
+            const label = p.multiplier === 3 ? 'TC' : 'C';
+            const bg = p.multiplier === 3 ? '#ff4444' : '#000';
+            capBadge = `<div style="position:absolute; top:-12px; right:0; background:${bg}; color:var(--gold); font-size:0.65rem; padding:1px 4px; border:1px solid var(--gold); border-radius:3px; font-weight:900; z-index:5;">${label}</div>`;
+        } else if (p.is_vice_captain === true) { 
+            capBadge = `<div style="position:absolute; top:-12px; right:0; background:#333; color:#fff; font-size:0.65rem; padding:1px 4px; border:1px solid #fff; border-radius:3px; font-weight:900; z-index:5;">V</div>`;
         }
 
-        // Captain/TC Point Multiplier
-        const multipliedPoints = (p.points || 0) * (p.multiplier || 1);
+        const score = (p.points || 0) * (p.multiplier || 1);
 
         return `
-            <div style="text-align:center; width:65px; position:relative;">
-                <div style="font-size:1.4rem; position:relative;">
-                    ${capIcon}
+            <div style="text-align:center; width:75px; position:relative;">
+                <div style="font-size:1.8rem; position:relative; margin-bottom:2px;">
+                    ${capBadge}
                     👕
                 </div>
-                <div style="background:#000; color:#fff; font-size:0.55rem; padding:1px 2px; border-radius:2px; margin:2px 0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">
+                <div style="background:rgba(0,0,0,0.85); color:#fff; font-size:0.6rem; padding:2px 4px; border-radius:3px; max-width:100%; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; border:0.5px solid #333;">
                     ${p.name}
                 </div>
-                <div style="font-size:0.65rem; color:var(--gold); font-weight:800; background:rgba(0,0,0,0.6); border-radius:3px;">
-                    ${multipliedPoints}
+                <div style="font-size:0.75rem; color:var(--gold); font-weight:900; text-shadow: 1px 1px #000;">
+                    ${score}
                 </div>
             </div>
         `;
