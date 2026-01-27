@@ -12,10 +12,6 @@ jobs:
   fpl_sync_job:
     runs-on: ubuntu-latest
 
-    # GitHub ထဲသို့ JSON ဖိုင်ပြန်ရေးရန် Permission ပေးခြင်း
-    permissions:
-      contents: write
-
     steps:
       # ၁။ GitHub ရှိ ဖိုင်များကို Checkout လုပ်ခြင်း
       - name: Checkout Repository Code
@@ -35,20 +31,16 @@ jobs:
           if [ -f scripts/requirements.txt ]; then pip install -r scripts/requirements.txt; fi
 
       # ၄။ Firebase Rankings ကို Sync လုပ်ခြင်း
+      # Firebase နဲ့ ချိတ်ဖို့ FIREBASE_SERVICE_ACCOUNT secret ကို သုံးထားပါတယ်
       - name: Run FPL Rankings Sync
+        env:
+          FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
         run: python scripts/sync_fpl.py
 
-      # ၅။ Scout JSON Data ကို Sync လုပ်ခြင်း
-      - name: Run Scout JSON Sync
-        run: python scripts/sync_scouts.py
-
-      # ၆။ ထွက်လာသော scout_data.json ကို GitHub Repository ထဲသို့ ပြန်သိမ်းခြင်း
-      - name: Commit and Push JSON Changes
-        run: |
-          git config --global user.name "github-actions[bot]"
-          git config --global user.email "github-actions[bot]@users.noreply.github.com"
-          git add scout_data.json
-          # ပြောင်းလဲမှုရှိမှသာ Commit လုပ်မည်
-          git commit -m "🤖 Auto-update: Scout Data (Gameweek Sync)" || echo "No changes to commit"
-          
-          git push
+      # ၅။ Scout Data ကို Firebase သို့ Sync လုပ်ခြင်း
+      # JSON file ထုတ်မနေတော့ဘဲ Firebase ထဲ တန်းထည့်ပါမယ်
+      - name: Run Scout Firebase Sync
+        env:
+          FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+        run: python scripts/sync_sco
+        uts.py
