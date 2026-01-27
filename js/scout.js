@@ -39,6 +39,7 @@ window.switchTab = function(tab) {
 async function loadPlayerData() {
     const container = document.getElementById('scout-container');
     container.innerHTML = `<div class="spinner"></div>`;
+    // Player data တွင် gw_points ပါဝင်ရန် Python ဘက်မှ event_points ကို map လုပ်ထားရမည်
     const snapshot = await db.collection("scout_players").orderBy("total_points", "desc").limit(100).get();
     let players = [];
     snapshot.forEach(doc => players.push({id: doc.id, ...doc.data()}));
@@ -68,8 +69,7 @@ function displayPlayerRows(data) {
                 <div style="font-weight:800; font-size:0.85rem;">${p.name}</div>
                 <div style="font-size:0.6rem; color:#666;">${p.team} | ${p.pos} | £${p.price}m</div>
             </td>
-            <td align="center">${p.form || 0}</td>
-            <td align="center" style="font-weight:bold;">${p.total_points || 0}</td>
+            <td align="center">${p.gw_points || 0}</td> <td align="center" style="font-weight:bold;">${p.total_points || 0}</td>
             <td align="center" style="font-size:0.75rem; color:var(--gold);">${p.ownership || '0.0'}%</td>
         </tr>
     `).join('');
@@ -77,20 +77,19 @@ function displayPlayerRows(data) {
 
 window.reSortP = (t) => {
     let sorted = [...window.allPlayers];
-    if (t === 'gw') sorted.sort((a,b) => parseFloat(b.form || 0) - parseFloat(a.form || 0));
+    if (t === 'gw') sorted.sort((a,b) => (b.gw_points || 0) - (a.gw_points || 0));
     else if (t === 'tot') sorted.sort((a,b) => b.total_points - a.total_points);
     else if (t === 'own') sorted.sort((a,b) => parseFloat(b.ownership || 0) - parseFloat(a.ownership || 0));
     displayPlayerRows(sorted);
 };
 
-// ပြင်ဆင်ထားသော Player Detail Popup (Fixtures ပါဝင်သည်)
+// Player Detail Popup
 window.showPDetail = (id) => {
     const p = window.allPlayers.find(x => x.id === id);
     const modal = document.createElement('div');
     modal.className = 'modal-overlay';
     modal.onclick = () => modal.remove();
     
-    // Next 5 Matches Generator
     const fixtureHtml = p.fixtures ? p.fixtures.slice(0, 5).map(f => `
         <div style="flex:1; background:${f.bg || '#333'}; color:${f.text || '#fff'}; text-align:center; padding:5px 2px; border-radius:4px; font-size:0.6rem; font-weight:bold; min-width:45px; border:1px solid rgba(255,255,255,0.1);">
             <div>${f.opponent || 'TBC'}</div>
@@ -106,45 +105,24 @@ window.showPDetail = (id) => {
             </div>
             
             <div class="profile-info" style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:8px; margin-bottom:15px;">
-                <div class="info-item" style="background:#111; padding:5px; border-radius:4px; text-align:center;">
-                    <span class="label" style="display:block; font-size:0.55rem; color:#666;">GOALS</span>
-                    <span class="val" style="font-weight:bold;">${p.goals||0}</span>
-                </div>
-                <div class="info-item" style="background:#111; padding:5px; border-radius:4px; text-align:center;">
-                    <span class="label" style="display:block; font-size:0.55rem; color:#666;">ASSISTS</span>
-                    <span class="val" style="font-weight:bold;">${p.assists||0}</span>
-                </div>
-                <div class="info-item" style="background:#111; padding:5px; border-radius:4px; text-align:center;">
-                    <span class="label" style="display:block; font-size:0.55rem; color:#666;">CS</span>
-                    <span class="val" style="font-weight:bold;">${p.clean_sheets||0}</span>
-                </div>
-                <div class="info-item" style="background:#111; padding:5px; border-radius:4px; text-align:center;">
-                    <span class="label" style="display:block; font-size:0.55rem; color:#666;">BONUS</span>
-                    <span class="val" style="font-weight:bold;">${p.bonus||0}</span>
-                </div>
-                <div class="info-item" style="background:#111; padding:5px; border-radius:4px; text-align:center;">
-                    <span class="label" style="display:block; font-size:0.55rem; color:#666;">xG</span>
-                    <span class="val" style="font-weight:bold;">${p.xg||0.0}</span>
-                </div>
-                <div class="info-item" style="background:#111; padding:5px; border-radius:4px; text-align:center;">
-                    <span class="label" style="display:block; font-size:0.55rem; color:#666;">ICT</span>
-                    <span class="val" style="font-weight:bold;">${p.ict||0.0}</span>
-                </div>
+                <div class="info-item"><span class="label">GOALS</span><span class="val">${p.goals||0}</span></div>
+                <div class="info-item"><span class="label">ASSISTS</span><span class="val">${p.assists||0}</span></div>
+                <div class="info-item"><span class="label">CS</span><span class="val">${p.clean_sheets||0}</span></div>
+                <div class="info-item"><span class="label">BONUS</span><span class="val">${p.bonus||0}</span></div>
+                <div class="info-item"><span class="label">xG</span><span class="val">${p.xg||0.0}</span></div>
+                <div class="info-item"><span class="label">ICT</span><span class="val">${p.ict||0.0}</span></div>
             </div>
 
             <div style="margin-bottom:15px; background:rgba(212,175,55,0.05); padding:10px; border-radius:8px; border:1px solid #222;">
                 <div style="font-size:0.65rem; color:var(--gold); margin-bottom:8px; font-weight:bold; letter-spacing:1px;">NEXT 5 MATCHES</div>
-                <div style="display:flex; gap:4px; justify-content:space-between;">
-                    ${fixtureHtml}
-                </div>
+                <div style="display:flex; gap:4px; justify-content:space-between;">${fixtureHtml}</div>
             </div>
 
             <div style="background:#000; padding:10px; border-radius:8px; border:1px solid #222; display:flex; justify-content:space-between; font-size:0.7rem;">
-                <span>Price: <b style="color:#fff;">£${p.price}m</b></span>
+                <span>Price: <b>£${p.price}m</b></span>
                 <span>Ownership: <b style="color:var(--gold);">${p.ownership}%</b></span>
             </div>
-
-            <button class="primary-btn" style="margin-top:15px; width:100%; border-radius:6px; font-weight:bold;" onclick="this.parentElement.parentElement.remove()">CLOSE</button>
+            <button class="primary-btn" style="margin-top:15px; width:100%; border-radius:6px;" onclick="this.parentElement.parentElement.remove()">CLOSE</button>
         </div>
     `;
     document.body.appendChild(modal);
@@ -210,7 +188,7 @@ window.reSortL = (t) => {
 };
 
 /**
- * ၅။ Pitch View
+ * ၅။ Pitch View (Formation & Captaincy logic)
  */
 window.showTPitch = (id) => {
     const t = window.allLeagues.find(x => x.entry_id == id);
@@ -257,18 +235,33 @@ window.showTPitch = (id) => {
 };
 
 function renderPitchPlayers(arr) {
-    return arr.map(p => `
-        <div style="text-align:center; width:65px;">
-            <div style="font-size:1.4rem; position:relative;">
-                ${p.is_captain ? '<span style="position:absolute; top:-8px; right:5px; font-size:0.7rem;">👑</span>' : ''}
-                👕
+    return arr.map(p => {
+        // Captaincy Marker
+        let capIcon = '';
+        if (p.is_captain) {
+            const badgeLabel = p.multiplier === 3 ? 'TC' : 'C';
+            const badgeBg = p.multiplier === 3 ? '#ff4444' : '#000';
+            capIcon = `<span style="position:absolute; top:-10px; right:2px; font-size:0.6rem; background:${badgeBg}; color:var(--gold); padding:1px 3px; border-radius:3px; border:1px solid var(--gold); font-weight:900; z-index:2;">${badgeLabel}</span>`;
+        } else if (p.is_vice_captain) {
+            capIcon = `<span style="position:absolute; top:-10px; right:2px; font-size:0.6rem; background:#333; color:#fff; padding:1px 3px; border-radius:3px; border:1px solid #999; font-weight:900; z-index:2;">V</span>`;
+        }
+
+        // Captain/TC Point Multiplier
+        const multipliedPoints = (p.points || 0) * (p.multiplier || 1);
+
+        return `
+            <div style="text-align:center; width:65px; position:relative;">
+                <div style="font-size:1.4rem; position:relative;">
+                    ${capIcon}
+                    👕
+                </div>
+                <div style="background:#000; color:#fff; font-size:0.55rem; padding:1px 2px; border-radius:2px; margin:2px 0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">
+                    ${p.name}
+                </div>
+                <div style="font-size:0.65rem; color:var(--gold); font-weight:800; background:rgba(0,0,0,0.6); border-radius:3px;">
+                    ${multipliedPoints}
+                </div>
             </div>
-            <div style="background:#000; color:#fff; font-size:0.55rem; padding:1px 2px; border-radius:2px; margin:2px 0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">
-                ${p.name}
-            </div>
-            <div style="font-size:0.65rem; color:var(--gold); font-weight:800; background:rgba(0,0,0,0.5); border-radius:3px;">
-                ${p.points}
-            </div>
-        </div>
-    `).join('');
+        `;
+    }).join('');
 }
