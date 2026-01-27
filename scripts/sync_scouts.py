@@ -107,5 +107,6 @@ def sync_scouts():
     s_batch.commit()
     print("Top Scout Players Updated!")
 
+# အဓိက Error တက်နေသည့်နေရာ (Indentation ကို ပြင်ထားပါသည်)
 if __name__ == "__main__":
-sync_scouts()
+    sync_scouts()
