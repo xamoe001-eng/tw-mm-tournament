@@ -13,8 +13,10 @@ def initialize_firebase():
             cred_dict = json.loads(service_account_info)
             cred = credentials.Certificate(cred_dict)
         else:
-            # Local path
-            cred = credentials.Certificate('scripts/serviceAccountKey.json')
+            # Local path အနေနဲ့ စစ်ဆေးခြင်း
+            current_dir = os.path.dirname(os.path.abspath(__file__))
+            cred_path = os.path.join(current_dir, 'serviceAccountKey.json')
+            cred = credentials.Certificate(cred_path)
         firebase_admin.initialize_app(cred)
     return firestore.client()
 
@@ -37,7 +39,7 @@ def get_fpl_base_data():
 
 def sync_scouts():
     players_raw, teams_map, pos_map, gw = get_fpl_base_data()
-    print(f"--- Syncing Data for Gameweek {gw} ---")
+    print(f"--- 🚀 Syncing Data for Gameweek {gw} ---")
 
     for league_name, l_id in LEAGUES.items():
         print(f"Processing {league_name}...")
@@ -57,8 +59,7 @@ def sync_scouts():
                     p_id = p['element']
                     p_info = players_raw.get(p_id)
                     
-                    # 👈 Logic ပြင်ဆင်ချက်- dict.get() သုံးပြီး Default value False ပေးထားသည်
-                    # Triple Captain သုံးထားရင် multiplier က 3 ဖြစ်နေတတ်သည်
+                    # FPL API မှ တိုက်ရိုက်လာသော Boolean တန်ဖိုးကိုသာ ယူသည်
                     lineup.append({
                         "id": p_id,
                         "name": p_info['web_name'],
@@ -81,9 +82,13 @@ def sync_scouts():
                 "lineup": lineup,
                 "last_updated": firestore.SERVER_TIMESTAMP
             }
+            
             doc_ref = db.collection(f"scout_{league_name}").document(entry_id)
-            batch.set(doc_ref, data, merge=True)
+            # 🔥 merge=True ကို ဖယ်လိုက်ပါပြီ။ ဒါမှ Lineup အဟောင်းတွေ အကုန်ရှင်းသွားမှာပါ
+            batch.set(doc_ref, data) 
+            
         batch.commit()
+        print(f"✅ {league_name} Data Updated.")
 
     # --- Player Scout Sync ---
     print("Fetching Player Stats...")
@@ -137,7 +142,7 @@ def sync_scouts():
         time.sleep(0.05)
         
     s_batch.commit()
-    print("✅ Advanced Sync Completed!")
+    print("✨ Sync Process Completed Successfully!")
 
 if __name__ == "__main__":
     sync_scouts()
