@@ -30,17 +30,14 @@ jobs:
           pip install requests firebase-admin
           if [ -f scripts/requirements.txt ]; then pip install -r scripts/requirements.txt; fi
 
-      # ၄။ Firebase Rankings ကို Sync လုပ်ခြင်း
-      # Firebase နဲ့ ချိတ်ဖို့ FIREBASE_SERVICE_ACCOUNT secret ကို သုံးထားပါတယ်
+      # ၄။ Firebase Rankings ကို Sync လုပ်ခြင်း (sync_fpl.py)
       - name: Run FPL Rankings Sync
         env:
           FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
         run: python scripts/sync_fpl.py
 
-      # ၅။ Scout Data ကို Firebase သို့ Sync လုပ်ခြင်း
-      # JSON file ထုတ်မနေတော့ဘဲ Firebase ထဲ တန်းထည့်ပါမယ်
+      # ၅။ Scout & Lineup Data ကို Firebase သို့ Sync လုပ်ခြင်း (sync_scouts.py)
       - name: Run Scout Firebase Sync
         env:
           FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
-        run: python scripts/sync_sco
-        uts.py
+        run: python scripts/sync_scouts.py
