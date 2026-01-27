@@ -24,15 +24,28 @@ style.innerHTML = `
 `;
 document.head.appendChild(style);
 
+// --- 🛠️ Global Variable for Manager Name ---
+let currentManagerName = "User";
+
 // --- 🛠️ Core Functions ---
 
-function renderCommunity() {
+async function renderCommunity() {
     const main = document.getElementById('main-root');
     const user = auth.currentUser;
 
-    // displayName null ဖြစ်နေရင် 'User' လို့ပြမယ်
-    const finalName = (user && user.displayName) ? user.displayName : "User";
-    const initial = finalName.charAt(0);
+    // Firestore ထဲက manager_name ကို အရင်ရှာမယ်
+    if (user) {
+        try {
+            const userDoc = await db.collection("users").doc(user.uid).get();
+            if (userDoc.exists) {
+                currentManagerName = userDoc.data().manager_name || userDoc.data().facebook_name || "User";
+            }
+        } catch (e) {
+            console.error("Error fetching user name:", e);
+        }
+    }
+
+    const initial = currentManagerName.charAt(0);
 
     main.innerHTML = `
         <div class="comm-wrapper">
@@ -41,7 +54,7 @@ function renderCommunity() {
                 <div style="background: #1a1a1a; padding: 15px; border-radius: 15px; border: 1px solid #333; margin-bottom: 25px;">
                     <div style="display: flex; gap: 10px; align-items: center; margin-bottom: 10px;">
                         <div class="initial-box">${initial}</div>
-                        <strong>${finalName} <br><small style="color:#4caf50; font-size:10px;">● Online</small></strong>
+                        <strong>${currentManagerName} <br><small style="color:#4caf50; font-size:10px;">● Online</small></strong>
                     </div>
                     <textarea id="postInput" style="width:100%; background:#000; color:white; border:1px solid #444; padding:10px; border-radius:8px; height:80px; resize:none; box-sizing:border-box;" placeholder="ဘာပြောချင်လဲဗျာ..."></textarea>
                     <button onclick="savePost()" class="post-btn">🚀 POST တင်မယ်</button>
@@ -60,8 +73,9 @@ function savePost() {
     const user = auth.currentUser;
     if (!text.trim()) return alert("စာအရင်ရေးပါဦး!");
 
+    // Firestore ကနေ ရထားတဲ့ currentManagerName ကိုပဲ သုံးမယ်
     db.collection("tw_posts").add({
-        name: user.displayName || "User", // Database ထဲပို့ရင် null မဖြစ်အောင် စစ်ထားသည်
+        name: currentManagerName, 
         uid: user.uid, 
         message: text,
         timestamp: firebase.firestore.FieldValue.serverTimestamp()
@@ -79,7 +93,6 @@ function loadPosts() {
             const p = doc.data();
             const time = p.timestamp ? new Date(p.timestamp.seconds * 1000).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}) : 'Just now';
             
-            // Post တင်ထားသူရဲ့ နာမည် null ဖြစ်နေလျှင် 'User' ဟု ပြောင်းရန်
             const displayName = p.name || "User";
             const initial = displayName.charAt(0);
             const targetId = p.uid || "no-id";
