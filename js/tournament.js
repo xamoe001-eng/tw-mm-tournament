@@ -1,38 +1,10 @@
-/**
- * ၁။ Tournament Standings Render လုပ်ခြင်း
- */
-window.renderLeagues = function() {
-    const mainRoot = document.getElementById('main-root');
-    if (!mainRoot) return;
-
-    mainRoot.innerHTML = `
-        <div style="padding: 12px; max-width: 500px; margin: 0 auto; font-family: 'Inter', sans-serif;">
-            <div style="display: flex; background: #161616; padding: 4px; border-radius: 50px; margin-bottom: 18px; border: 1px solid #222;">
-                <button id="btn-divA" onclick="window.filterDivision('A')" 
-                    style="flex: 1; padding: 10px; border: none; border-radius: 40px; font-weight: 800; cursor: pointer; transition: 0.3s; background: #D4AF37; color: #000; font-size: 0.8rem;">
-                    DIVISION 1
-                </button>
-                <button id="btn-divB" onclick="window.filterDivision('B')" 
-                    style="flex: 1; padding: 10px; border: none; border-radius: 40px; font-weight: 800; cursor: pointer; transition: 0.3s; background: transparent; color: #666; font-size: 0.8rem;">
-                    DIVISION 2
-                </button>
-            </div>
-            <div id="league-content"></div>
-        </div>
-    `;
-    setTimeout(() => { window.filterDivision('A'); }, 100);
-};
-
-/**
- * ၂။ Division အလိုက် ဒေတာပြသခြင်း
- */
 window.filterDivision = function(divTag) {
     const content = document.getElementById('league-content');
     const btnA = document.getElementById('btn-divA');
     const btnB = document.getElementById('btn-divB');
     if (!content) return;
 
-    // Button Toggle
+    // Button UI Toggle
     if (divTag === 'A') {
         btnA.style.background = '#D4AF37'; btnA.style.color = '#000';
         btnB.style.background = 'transparent'; btnB.style.color = '#666';
@@ -41,16 +13,32 @@ window.filterDivision = function(divTag) {
         btnA.style.background = 'transparent'; btnA.style.color = '#666';
     }
 
+    // 🛑 Index Error မတက်အောင် orderBy ကို ဖြုတ်ထားပါတယ်
     db.collection("tw_mm_tournament")
       .where("league_tag", "==", divTag)
-      .orderBy("h2h_points", "desc") 
-      .orderBy("gw_points", "desc") 
       .onSnapshot((snapshot) => {
         if (snapshot.empty) {
-            content.innerHTML = `<div style="text-align:center; padding:50px; color:#444;">NO DATA</div>`;
+            content.innerHTML = `<div style="text-align:center; padding:50px; color:#444;">NO DATA IN DIVISION ${divTag}</div>`;
             return;
         }
 
+        // ၁။ ဒေတာများကို Array ထဲထည့်ခြင်း
+        let players = [];
+        snapshot.forEach((doc) => {
+            players.push(doc.data());
+        });
+
+        // ၂။ Sorting Logic (အမှတ်တူရင် Week Point များသူကို အပေါ်တင်သည်)
+        players.sort((a, b) => {
+            // ပထမအဆင့်: H2H Points (PTS) အများဆုံးသူကို အရင်စီသည်
+            if ((b.h2h_points || 0) !== (a.h2h_points || 0)) {
+                return (b.h2h_points || 0) - (a.h2h_points || 0);
+            }
+            // ဒုတိယအဆင့် (Tie-breaker): PTS တူရင် GW Points များသူကို အပေါ်တင်သည်
+            return (b.gw_points || 0) - (a.gw_points || 0);
+        });
+
+        // ၃။ HTML Render လုပ်ခြင်း
         let html = `
             <div style="display: flex; justify-content: space-between; padding: 0 10px 10px; font-size: 0.65rem; color: #555; font-weight: 800; text-transform: uppercase;">
                 <span># TEAM INFO</span>
@@ -58,9 +46,8 @@ window.filterDivision = function(divTag) {
             </div>
         `;
 
-        let pos = 1;
-        snapshot.forEach((doc) => {
-            const p = doc.data();
+        players.forEach((p, index) => {
+            const pos = index + 1;
             const rankColor = pos === 1 ? '#D4AF37' : (pos === 2 ? '#C0C0C0' : (pos === 3 ? '#CD7F32' : '#fff'));
 
             html += `
@@ -69,9 +56,9 @@ window.filterDivision = function(divTag) {
                     
                     <div style="flex: 1; min-width: 0; padding-right: 5px;">
                         <div style="font-weight: 800; color: #fff; font-size: 0.85rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
-                            ${p.team_name}
+                            ${p.team_name || 'No Name'}
                         </div>
-                        <div style="font-size: 0.65rem; color: #555;">${p.manager_name}</div>
+                        <div style="font-size: 0.65rem; color: #555;">${p.manager_name || 'Manager'}</div>
                     </div>
 
                     <div style="text-align: right; min-width: 120px;">
@@ -92,11 +79,8 @@ window.filterDivision = function(divTag) {
                     </div>
                 </div>
             `;
-            pos++;
         });
 
         content.innerHTML = html;
-  
-   
       });
 };
