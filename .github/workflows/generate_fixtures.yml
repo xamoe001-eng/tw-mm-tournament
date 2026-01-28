@@ -22,4 +22,4 @@ jobs:
       - name: Run Fixture Generator
         env:
           FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
-        run: python generate_fixtures.py # မိတ်ဆွေရဲ့ Python file နာမည်နဲ့ တူရပါမယ်
+        run: python fixtures.py # မိတ်ဆွေရဲ့ Python file နာမည်နဲ့ တူရပါမယ်
