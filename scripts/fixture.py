@@ -4,41 +4,40 @@ import random
 import os
 import json
 
-# ၁။ Firebase Initialize လုပ်ခြင်း
+# ၁။ Firebase Initialize လုပ်ခြင်း (sync_scouts.py ထဲက logic အတိုင်း ပြင်ဆင်ထားသည်)
 def initialize_firebase():
     if not firebase_admin._apps:
-        # GitHub Secret ထဲက Key ကို အရင်စစ်မည်
         service_account_info = os.environ.get('FIREBASE_SERVICE_ACCOUNT')
         
         if service_account_info:
-            # Secret ရှိနေရင် (GitHub ပေါ်မှာ run နေရင်) အလုပ်လုပ်မည့် logic
+            # GitHub Actions ပေါ်တွင် Run နေပါက
             print("✅ Using FIREBASE_SERVICE_ACCOUNT from GitHub Secrets")
-            try:
-                cred_dict = json.loads(service_account_info)
-                cred = credentials.Certificate(cred_dict)
-            except Exception as e:
-                print(f"❌ Error parsing JSON from Secrets: {e}")
-                raise e
+            cred_dict = json.loads(service_account_info)
+            cred = credentials.Certificate(cred_dict)
         else:
-            # Secret မရှိရင် (Local ကွန်ပျူတာမှာ စမ်းနေရင်) ဖိုင်ကို ရှာမည်
-            print("ℹ️ Secret not found. Looking for local serviceAccountKey.json")
-            try:
-                cred = credentials.Certificate('serviceAccountKey.json')
-            except Exception as e:
-                print(f"❌ Local serviceAccountKey.json not found: {e}")
-                raise e
+            # Local ကွန်ပျူတာတွင် Run နေပါက
+            print("ℹ️ Local mode: Looking for serviceAccountKey.json")
+            # လက်ရှိ script ရှိတဲ့ folder လမ်းကြောင်းကို ယူခြင်း
+            current_dir = os.path.dirname(os.path.abspath(__file__))
+            cred_path = os.path.join(current_dir, 'serviceAccountKey.json')
+            
+            # အကယ်၍ scripts folder ထဲမှာ မဟုတ်ဘဲ project root မှာ ရှိနေရင်
+            if not os.path.exists(cred_path):
+                cred_path = 'serviceAccountKey.json'
+                
+            cred = credentials.Certificate(cred_path)
             
         firebase_admin.initialize_app(cred)
     return firestore.client()
 
-# Firebase Database ကို စတင်ချိတ်ဆက်ခြင်း
+# Firebase ချိတ်ဆက်ခြင်း
 db = initialize_firebase()
 
 def generate_fixtures():
     # စတင်မည့် Gameweek
     start_gw = 23 
     
-    # ၂။ Guard Logic: ပွဲစဉ်ရှိမရှိ အရင်စစ်မည် (Duplicate မဖြစ်အောင်)
+    # ၂။ Guard Logic: ပွဲစဉ်ရှိမရှိ အရင်စစ်မည်
     try:
         existing_check = db.collection("fixtures").where("gameweek", "==", start_gw).limit(1).get()
         if len(existing_check) > 0:
@@ -48,7 +47,7 @@ def generate_fixtures():
         print(f"❌ Database error: {e}")
         return
 
-    print("--- 🛠️ Generating Fixtures for Division A, B and FA Cup ---")
+    print("--- 🛠️ Generating Fixtures (League A, B & FA Cup) ---")
     
     # ၃။ Player စာရင်းယူခြင်း
     players_ref = db.collection("tw_mm_tournament").stream()
@@ -89,7 +88,6 @@ def generate_fixtures():
                     "away": a, 
                     "status": "upcoming"
                 })
-            # Round Robin Rotation
             pool = [pool[0]] + [pool[-1]] + pool[1:-1]
 
     if div_a: create_league_schedule(div_a, "A")
@@ -110,9 +108,8 @@ def generate_fixtures():
                 "status": "upcoming"
             })
 
-    # Firestore သို့ Batch အလိုက် တစ်ခါတည်း Update လုပ်ခြင်း
     batch.commit()
-    print("✅ Fixtures successfully generated and uploaded to Firestore!")
+    print("✅ Fixtures successfully generated and uploaded!")
 
 if __name__ == "__main__":
     generate_fixtures()
