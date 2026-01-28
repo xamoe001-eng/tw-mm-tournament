@@ -41,6 +41,7 @@ def sync_scouts():
     players_raw, teams_map, pos_map, gw = get_fpl_base_data()
     print(f"--- 🚀 Syncing Data for Gameweek {gw} ---")
 
+    # --- League Scout Sync ---
     for league_name, l_id in LEAGUES.items():
         print(f"Processing {league_name}...")
         standings_url = f"{FPL_API}leagues-classic/{l_id}/standings/"
@@ -59,7 +60,6 @@ def sync_scouts():
                     p_id = p['element']
                     p_info = players_raw.get(p_id)
                     
-                    # FPL API မှ တိုက်ရိုက်လာသော Boolean တန်ဖိုးကိုသာ ယူသည်
                     lineup.append({
                         "id": p_id,
                         "name": p_info['web_name'],
@@ -84,65 +84,77 @@ def sync_scouts():
             }
             
             doc_ref = db.collection(f"scout_{league_name}").document(entry_id)
-            # 🔥 merge=True ကို ဖယ်လိုက်ပါပြီ။ ဒါမှ Lineup အဟောင်းတွေ အကုန်ရှင်းသွားမှာပါ
             batch.set(doc_ref, data) 
             
         batch.commit()
         print(f"✅ {league_name} Data Updated.")
 
-    # --- Player Scout Sync ---
-    print("Fetching Player Stats...")
-    top_scouts = sorted(players_raw.values(), key=lambda x: x['total_points'], reverse=True)[:100]
+    # --- Player Scout Sync (Updated to All Players) ---
+    print(f"Fetching All Player Stats ({len(players_raw)} players)...")
     
-    s_batch = db.batch()
-    for p in top_scouts:
-        p_id = p['id']
-        f_url = f"{FPL_API}element-summary/{p_id}/"
-        f_res = requests.get(f_url).json()
-        
-        next_fixtures = []
-        for f in f_res.get('fixtures', [])[:5]:
-            is_home = f['is_home']
-            opp_id = f['team_a'] if is_home else f['team_h']
-            difficulty = f['difficulty']
+    # 🔥 [:100] ကို ဖြုတ်လိုက်ပြီး Player အားလုံးကို list ထဲထည့်ပါမယ်
+    all_scouts = sorted(players_raw.values(), key=lambda x: x['total_points'], reverse=True)
+    
+    # Firestore batch က တစ်ခါပို့ရင် ၅၀၀ ပဲ လက်ခံတာမို့ batch ခွဲပို့ဖို့ လိုပါတယ်
+    def commit_batch(items):
+        s_batch = db.batch()
+        for p in items:
+            p_id = p['id']
+            # Fixture info အတွက် API ထပ်ခေါ်ရလို့ Fixture ပါတဲ့ Player တွေပဲ အသေးစိတ်ဆွဲမယ်
+            # API ခေါ်ယူမှု အရမ်းများတာသက်သာအောင် points ရှိတဲ့သူတွေကိုပဲ ဦးစားပေးဆွဲတာ ပိုကောင်းပါတယ်
             
-            bg_color = "#375523" 
-            if difficulty == 3: bg_color = "#e7d60d"
-            if difficulty >= 4: bg_color = "#e9190c"
+            f_url = f"{FPL_API}element-summary/{p_id}/"
+            f_res = requests.get(f_url).json()
             
-            next_fixtures.append({
-                "opponent": teams_map[opp_id]['short'],
-                "is_home": is_home,
-                "difficulty": difficulty,
-                "bg": bg_color,
-                "text": "#000" if difficulty == 3 else "#fff"
-            })
+            next_fixtures = []
+            for f in f_res.get('fixtures', [])[:5]:
+                is_home = f['is_home']
+                opp_id = f['team_a'] if is_home else f['team_h']
+                difficulty = f['difficulty']
+                
+                bg_color = "#375523" # Green
+                if difficulty == 3: bg_color = "#e7d60d" # Yellow
+                if difficulty >= 4: bg_color = "#e9190c" # Red
+                
+                next_fixtures.append({
+                    "opponent": teams_map[opp_id]['short'],
+                    "is_home": is_home,
+                    "difficulty": difficulty,
+                    "bg": bg_color,
+                    "text": "#000" if difficulty == 3 else "#fff"
+                })
 
-        s_ref = db.collection("scout_players").document(str(p_id))
-        s_batch.set(s_ref, {
-            "name": p['web_name'],
-            "full_name": f"{p['first_name']} {p['second_name']}",
-            "team": teams_map[p['team']]['short'],
-            "team_full": teams_map[p['team']]['full'],
-            "pos": pos_map[p['element_type']],
-            "gw_points": p['event_points'],
-            "form": p['form'],
-            "price": p['now_cost'] / 10,
-            "total_points": p['total_points'],
-            "ownership": p['selected_by_percent'],
-            "goals": p['goals_scored'],
-            "assists": p['assists'],
-            "clean_sheets": p['clean_sheets'],
-            "bonus": p['bonus'],
-            "xg": p['expected_goals'],
-            "ict": p['ict_index'],
-            "fixtures": next_fixtures,
-            "last_updated": firestore.SERVER_TIMESTAMP
-        }, merge=True)
-        time.sleep(0.05)
-        
-    s_batch.commit()
-    print("✨ Sync Process Completed Successfully!")
+            s_ref = db.collection("scout_players").document(str(p_id))
+            s_batch.set(s_ref, {
+                "name": p['web_name'],
+                "full_name": f"{p['first_name']} {p['second_name']}",
+                "team": teams_map[p['team']]['short'],
+                "team_full": teams_map[p['team']]['full'],
+                "pos": pos_map[p['element_type']],
+                "gw_points": p['event_points'],
+                "form": p['form'],
+                "price": p['now_cost'] / 10,
+                "total_points": p['total_points'],
+                "ownership": p['selected_by_percent'],
+                "goals": p['goals_scored'],
+                "assists": p['assists'],
+                "clean_sheets": p['clean_sheets'],
+                "bonus": p['bonus'],
+                "xg": p['expected_goals'],
+                "ict": p['ict_index'],
+                "fixtures": next_fixtures,
+                "last_updated": firestore.SERVER_TIMESTAMP
+            }, merge=True)
+            time.sleep(0.02) # Rate limit မမိအောင် ခနနားမယ်
+        s_batch.commit()
+
+    # Player ၅၀၀ စီ ခွဲပြီး Batch ပို့ခြင်း
+    for i in range(0, len(all_scouts), 500):
+        chunk = all_scouts[i:i + 500]
+        commit_batch(chunk)
+        print(f"✅ Processed {i + len(chunk)} players...")
+
+    print("✨ All Player Data Sync Completed Successfully!")
 
 if __name__ == "__main__":
     sync_scouts()
