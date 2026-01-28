@@ -2,8 +2,8 @@ name: TW MM Tournament Sync Robot
 
 on:
   schedule:
-    - cron: '0 */6 * * *'
-  workflow_dispatch:
+    - cron: '0 */6 * * *'  # ၆ နာရီခြား တစ်ခါ run မည်
+  workflow_dispatch:      # Manual run ခလုတ် ထည့်သွင်းထားသည်
 
 jobs:
   fpl_sync_job:
@@ -13,10 +13,10 @@ jobs:
       - name: Checkout Repository Code
         uses: actions/checkout@v3
 
-      - name: Set up Python 3.9
+      - name: Set up Python
         uses: actions/setup-python@v4
         with:
-          python-version: '3.9'
+          python-version: '3.10'
 
       - name: Install Dependencies
         run: |
@@ -36,4 +36,5 @@ jobs:
       - name: Run Scout Firebase Sync
         env:
           FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
-        run: python scripts/sync_scouts.py
+        run: python scripts/sync_sc
+        outs.py
