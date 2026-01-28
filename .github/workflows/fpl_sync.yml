@@ -36,5 +36,4 @@ jobs:
       - name: Run Scout Firebase Sync
         env:
           FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
-        run: python scripts/sync_sc
-        outs.py
+        run: python scripts/sync_scouts.py
