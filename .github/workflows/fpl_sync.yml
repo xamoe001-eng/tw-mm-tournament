@@ -1,42 +1,41 @@
-name: TW MM Tournament Sync Robot
+Name: TW MM Tournament Sync Robot
 
 on:
   schedule:
-    # ၆ နာရီခြား တစ်ခါ အလိုအလျောက် Run ရန် (UTC Time)
     - cron: '0 */6 * * *'
-  
-  # GitHub Actions Tab မှ Manual Run ရန်
-  workflow_dispatch:
+  workflow_dispatch: # လိုအပ်ရင် Manual နှိပ်လို့ရအောင် ထားထားပေးပါတယ်
 
 jobs:
   fpl_sync_job:
     runs-on: ubuntu-latest
 
     steps:
-      # ၁။ GitHub ရှိ ဖိုင်များကို Checkout လုပ်ခြင်း
       - name: Checkout Repository Code
         uses: actions/checkout@v3
 
-      # ၂။ Python Version 3.9 ကို သတ်မှတ်ခြင်း
       - name: Set up Python 3.9
         uses: actions/setup-python@v4
         with:
           python-version: '3.9'
 
-      # ၃။ လိုအပ်သော Library များကို Install လုပ်ခြင်း
       - name: Install Dependencies
         run: |
           python -m pip install --upgrade pip
           pip install requests firebase-admin
-          if [ -f scripts/requirements.txt ]; then pip install -r scripts/requirements.txt; fi
 
-      # ၄။ Firebase Rankings ကို Sync လုပ်ခြင်း (sync_fpl.py)
+      # ၁။ ပွဲစဉ်ဇယားစစ်ဆေးပြီး အလိုအလျောက်ထုတ်ပေးခြင်း
+      - name: Auto Run Fixture Generator
+        env:
+          FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+        run: python scripts/fixture.py
+
+      # ၂။ အမှတ်များ Sync လုပ်ခြင်း
       - name: Run FPL Rankings Sync
         env:
           FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
         run: python scripts/sync_fpl.py
 
-      # ၅။ Scout & Lineup Data ကို Firebase သို့ Sync လုပ်ခြင်း (sync_scouts.py)
+      # ၃။ Scout Data Sync လုပ်ခြင်း
       - name: Run Scout Firebase Sync
         env:
           FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
