@@ -4,7 +4,7 @@
 window.renderScout = async function() {
     const mainRoot = document.getElementById('main-root');
     
-    // CSS Header နဲ့ Pitch Design များ
+    // CSS ပိုမိုစုံလင်စွာ ထည့်သွင်းခြင်း
     const scoutStyle = document.createElement('style');
     scoutStyle.innerHTML = `
         .pitch-container {
@@ -25,8 +25,8 @@ window.renderScout = async function() {
             margin-bottom: 2px;
             transition: transform 0.2s;
         }
-        .jersey-gk { color: #f9d71c; } /* Goalkeeper - Yellow */
-        .jersey-field { color: #3bffee; } /* Outfield - Cyan/Blue */
+        .jersey-gk { color: #f9d71c !important; } /* Goalkeeper - Yellow */
+        .jersey-field { color: #3bffee; } /* Outfield - Cyan */
         .jersey-bench { color: #ffffff; opacity: 0.8; } /* Bench - White */
         
         .badge-common {
@@ -39,6 +39,21 @@ window.renderScout = async function() {
             font-weight: 900;
             z-index: 5;
             box-shadow: 0 2px 4px rgba(0,0,0,0.5);
+        }
+        .pos-filter-btn {
+            background: #222;
+            color: #888;
+            border: 1px solid #333;
+            padding: 5px 10px;
+            border-radius: 4px;
+            font-size: 0.65rem;
+            font-weight: bold;
+            cursor: pointer;
+        }
+        .pos-filter-btn.active {
+            background: var(--gold);
+            color: #000;
+            border-color: var(--gold);
         }
     `;
     document.head.appendChild(scoutStyle);
@@ -74,7 +89,7 @@ window.switchTab = function(tab) {
 };
 
 /**
- * ၃။ Player Scout Section
+ * ၃။ Player Scout Section (Filter Buttons ပါဝင်သည်)
  */
 async function loadPlayerData() {
     const container = document.getElementById('scout-container');
@@ -83,8 +98,16 @@ async function loadPlayerData() {
     let players = [];
     snapshot.forEach(doc => players.push({id: doc.id, ...doc.data()}));
     window.allPlayers = players;
+    window.currentPosFilter = 'ALL';
 
     container.innerHTML = `
+        <div style="display:flex; gap:5px; margin-bottom:15px; padding:0 10px; flex-wrap:nowrap; overflow-x:auto;">
+            <button class="pos-filter-btn active" onclick="window.filterByPos('ALL', this)">ALL</button>
+            <button class="pos-filter-btn" onclick="window.filterByPos('GKP', this)">GKP</button>
+            <button class="pos-filter-btn" onclick="window.filterByPos('DEF', this)">DEF</button>
+            <button class="pos-filter-btn" onclick="window.filterByPos('MID', this)">MID</button>
+            <button class="pos-filter-btn" onclick="window.filterByPos('FWD', this)">FWD</button>
+        </div>
         <table class="scout-table">
             <thead>
                 <tr>
@@ -100,8 +123,25 @@ async function loadPlayerData() {
     displayPlayerRows(players);
 }
 
+window.filterByPos = (pos, btn) => {
+    // UI Update
+    document.querySelectorAll('.pos-filter-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    
+    window.currentPosFilter = pos;
+    let filtered = window.allPlayers;
+    if (pos !== 'ALL') {
+        filtered = window.allPlayers.filter(p => p.pos === pos);
+    }
+    displayPlayerRows(filtered);
+};
+
 function displayPlayerRows(data) {
     const body = document.getElementById('p-body');
+    if (data.length === 0) {
+        body.innerHTML = `<tr><td colspan="4" align="center" style="padding:20px; color:#666;">No players found</td></tr>`;
+        return;
+    }
     body.innerHTML = data.map(p => `
         <tr onclick="window.showPDetail('${p.id}')">
             <td>
@@ -117,6 +157,10 @@ function displayPlayerRows(data) {
 
 window.reSortP = (t) => {
     let sorted = [...window.allPlayers];
+    if (window.currentPosFilter !== 'ALL') {
+        sorted = sorted.filter(p => p.pos === window.currentPosFilter);
+    }
+    
     if (t === 'gw') sorted.sort((a,b) => (b.gw_points || 0) - (a.gw_points || 0));
     else if (t === 'tot') sorted.sort((a,b) => b.total_points - a.total_points);
     else if (t === 'own') sorted.sort((a,b) => parseFloat(b.ownership || 0) - parseFloat(a.ownership || 0));
@@ -227,7 +271,7 @@ window.reSortL = (t) => {
 };
 
 /**
- * ၅။ Pitch View (Official Styling)
+ * ၅။ Pitch View (Official Styling & GK Jersey Fix)
  */
 window.showTPitch = (id) => {
     const t = window.allLeagues.find(x => x.entry_id == id);
@@ -239,7 +283,6 @@ window.showTPitch = (id) => {
     const starters = lineup.filter(p => p.multiplier > 0);
     const bench = lineup.filter(p => p.multiplier === 0);
 
-    // VC ရှာဖွေခြင်း
     const realVC = starters.find(p => p.is_vice_captain === true);
 
     modal.innerHTML = `
@@ -281,24 +324,23 @@ function renderPitchPlayers(arr, realVC) {
     return arr.map(p => {
         let capBadge = '';
         
-        // Captain Badge Logic
         if (p.is_captain) {
             const label = p.multiplier === 3 ? 'TC' : 'C';
             const bg = p.multiplier === 3 ? '#ff4444' : '#000';
             capBadge = `<div class="badge-common" style="background:${bg}; color:var(--gold); border:1px solid var(--gold);">${label}</div>`;
         } 
-        // Vice Captain Badge Logic
         else if (realVC && p.id === realVC.id) { 
             capBadge = `<div class="badge-common" style="background:#333; color:#fff; border:1px solid #fff;">V</div>`;
         }
 
         const score = (p.points || 0) * (p.multiplier || 1);
-        // GK ကို Yellow Jersey ပေးခြင်း
-        const jerseyType = p.pos === 'GKP' ? 'jersey-gk' : 'jersey-field';
+        
+        // 🔥 Goalkeeper ဖြစ်ပါက jersey-gk class ကို သေချာစွာ ထည့်သွင်းပေးထားပါသည်
+        const jerseyClass = (p.pos === 'GKP') ? 'jersey-gk' : 'jersey-field';
 
         return `
             <div style="text-align:center; width:68px; position:relative;">
-                <div class="jersey-icon ${jerseyType}">
+                <div class="jersey-icon ${jerseyClass}">
                     ${capBadge}
                     👕
                 </div>
