@@ -1,4 +1,4 @@
-Name: TW MM Tournament Sync Robot
+name: TW MM Tournament Sync Robot
 
 on:
   schedule:
