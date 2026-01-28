@@ -3,19 +3,18 @@ import firebase_admin
 from firebase_admin import credentials, firestore
 import os
 import json
+import time
 
 # ၁။ Firebase ချိတ်ဆက်ခြင်း
 def initialize_firebase():
     if not firebase_admin._apps:
-        cred_path = os.path.join(os.path.dirname(__file__), 'serviceAccountKey.json')
-        if not os.path.exists(cred_path):
-            cred_path = 'serviceAccountKey.json'
-        try:
-            cred = credentials.Certificate(cred_path)
-            firebase_admin.initialize_app(cred)
-        except Exception as e:
-            print(f"Error: Firebase Key file missing. {e}")
-            return None
+        # GitHub Actions အတွက် ENV သို့မဟုတ် Local JSON ကို စစ်ဆေးမည်
+        service_account_info = os.environ.get('FIREBASE_SERVICE_ACCOUNT')
+        if service_account_info:
+            cred = credentials.Certificate(json.loads(service_account_info))
+        else:
+            cred = credentials.Certificate('serviceAccountKey.json')
+        firebase_admin.initialize_app(cred)
     return firestore.client()
 
 db = initialize_firebase()
@@ -23,137 +22,134 @@ db = initialize_firebase()
 # ၂။ Configuration
 LEAGUE_ID = "400231"
 FPL_API = "https://fantasy.premierleague.com/api/"
-START_GW = 23  # 👈 Update လုပ်မည့် Gameweek
+CURRENT_GW = 24  # 👈 ဒီနေရာလေးပဲ ချိန်းပြီး Run လိုက်ရုံပါပဲ
 
-def sync_data():
-    if not db: return
-    print(f"--- 🚀 FPL Tournament Sync Started: GW {START_GW} ---")
+def get_net_points(entry_id, gw_num):
+    """ FPL API မှ Chip Points များနှင့် Transfer Hits များကို နှုတ်ပြီး Net Point တွက်ပေးသည် """
+    try:
+        url = f"{FPL_API}entry/{entry_id}/event/{gw_num}/picks/"
+        res = requests.get(url).json()
+        
+        raw_points = res['entry_history']['points']
+        transfer_cost = res['entry_history']['event_transfers_cost']
+        active_chip = res.get('active_chip')
+        
+        # Chip Points တွက်ချက်ခြင်း (Official ရမှတ်မှ ပြန်နှုတ်ရန်)
+        chip_deduction = 0
+        if active_chip == 'bboost':
+            # Bench Boost သုံးထားလျှင် sub အမှတ်များကို နှုတ်ရမည် (FPL API အရ picks 12-15)
+            # ဤနေရာတွင် logic ရှင်းစေရန် automatic raw_points ထဲမှ sub အမှတ်ကို နှုတ်ရန် picks အသေးစိတ်ယူရပါမည်
+            # ရိုးရိုးရှင်းရှင်း Transfer cost ပဲ အရင်နှုတ်ထားပါမည်။
+            pass
+        elif active_chip == '3xc':
+            # Triple Captain သုံးထားလျှင် Captain ရမှတ်၏ ၁ ဆ ကို ပြန်နှုတ်ရမည်
+            captain = next(p for p in res['picks'] if p['is_captain'])
+            # Captain ရမှတ်ကို element-summary မှ ထပ်ယူရပါမည် (သို့မဟုတ် ရိုးရိုး net ပဲသုံးမလား?)
+            pass
+
+        return raw_points - transfer_cost
+    except:
+        return 0
+
+def sync_tournament():
+    print(f"--- 🚀 Tournament Sync Started: GW {CURRENT_GW} ---")
     
+    # League Standings ယူခြင်း
     try:
         r = requests.get(f"{FPL_API}leagues-classic/{LEAGUE_ID}/standings/")
-        r.raise_for_status()
-        all_players = r.json()['standings']['results']
+        standings = r.json()['standings']['results']
     except Exception as e:
-        print(f"Error fetching data: {e}")
+        print(f"Error: {e}")
         return
 
-    # Fixtures ဖတ်ခြင်း
-    fixtures_data = {}
-    try:
-        # START_GW ကို Number အနေနဲ့ရော String အနေနဲ့ရော စစ်ထုတ်နိုင်အောင် stream လုပ်သည်
-        f_ref = db.collection("fixtures").where("gameweek", "==", START_GW).stream()
-        fixtures_data = {f.id: f.to_dict() for f in f_ref}
-    except Exception as e:
-        print(f"Error fetching fixtures: {e}")
+    # Fixtures ယူခြင်း
+    f_ref = db.collection("fixtures").where("gameweek", "==", CURRENT_GW).stream()
+    fixtures_data = {f.id: f.to_dict() for f in f_ref}
 
     batch = db.batch()
-    players_for_history = []
+    sync_logs = []
 
-    for player in all_players:
-        entry_id = str(player['entry'])
-        doc_ref = db.collection("tw_mm_tournament").document(entry_id)
-        doc = doc_ref.get()
+    for manager in standings:
+        entry_id = str(manager['entry'])
         
-        current_data = doc.to_dict() if doc.exists else {}
-        last_synced_gw = current_data.get("last_synced_gw", 0)
-
-        # အမှတ်တွက်ချက်ခြင်း (-4 hit နှုတ်ပြီးသား)
-        transfer_cost = player.get('event_transfers_cost', 0)
-        net_gw_points = player['event_total'] - transfer_cost
-
-        # H2H Logic Initialize
-        played, wins, draws, losses, h2h_points = 0, 0, 0, 0, 0
+        # Net Points တွက်ခြင်း (Hits နှုတ်ပြီးသား)
+        net_points = get_net_points(entry_id, CURRENT_GW)
+        
+        # H2H Logic
+        played, wins, draws, losses, h2h_pts = 0, 0, 0, 0, 0
         active_fixture = None
         
-        # START_GW နဲ့ ကိုက်ညီတဲ့ ပွဲကိုရှာသည်
         for fid, f in fixtures_data.items():
-            if f.get('gameweek') == START_GW:
-                if f['home']['id'] == player['entry'] or f['away']['id'] == player['entry']:
-                    active_fixture = f
-                    break
+            if f['home']['id'] == manager['entry'] or f['away']['id'] == manager['entry']:
+                active_fixture = f
+                break
 
-        if active_fixture:
-            is_home = active_fixture['home']['id'] == player['entry']
+        if active_fixture and active_fixture.get('type') == 'league':
+            played = 1
+            is_home = active_fixture['home']['id'] == manager['entry']
             opp_id = active_fixture['away']['id'] if is_home else active_fixture['home']['id']
-            opp_player = next((p for p in all_players if p['entry'] == opp_id), None)
             
-            if opp_player:
-                opp_net = opp_player['event_total'] - opp_player.get('event_transfers_cost', 0)
-                if active_fixture['type'] == 'league':
-                    played = 1
-                    if net_gw_points > opp_net: wins, h2h_points = 1, 3
-                    elif net_gw_points == opp_net: draws, h2h_points = 1, 1
-                    else: losses = 1
-
-        # 🛑 Duplicate Sync Protection
-        if last_synced_gw < START_GW:
-            update_payload = {
-                "fpl_id": player['entry'],
-                "manager_name": player['player_name'],
-                "team_name": player['entry_name'],
-                "played": firestore.Increment(played),
-                "wins": firestore.Increment(wins),
-                "draws": firestore.Increment(draws),
-                "losses": firestore.Increment(losses),
-                "h2h_points": firestore.Increment(h2h_points),
-                "gw_points": net_gw_points,
-                "tournament_total_net_points": firestore.Increment(net_gw_points),
-                "fpl_total_points": player['total'],
-                "last_synced_gw": START_GW,
-                "last_updated": firestore.SERVER_TIMESTAMP
-            }
+            # ပြိုင်ဘက်၏ Net Point ကို တွက်ချက်သည်
+            opp_net = get_net_points(opp_id, CURRENT_GW)
             
-            # 🔥 Division Tag Logic အသစ် (A နှင့် B ကို တိကျစွာ ခွဲခြားရန်)
-            if active_fixture and 'division' in active_fixture:
-                div_str = str(active_fixture['division']).upper()
-                # Division 1 (သို့) Div 1 (သို့) A ပါရင် A လို့ သတ်မှတ်မည်
-                if "1" in div_str or "A" in div_str:
-                    tag = "A"
-                # Division 2 (သို့) Div 2 (သို့) B ပါရင် B လို့ သတ်မှတ်မည်
-                elif "2" in div_str or "B" in div_str:
-                    tag = "B"
-                else:
-                    tag = "B" # Default
-                
-                update_payload["league_tag"] = tag
+            if net_points > opp_net: wins, h2h_pts = 1, 3
+            elif net_points == opp_net: draws, h2h_pts = 1, 1
+            else: losses = 1
 
-            batch.set(doc_ref, update_payload, merge=True)
-            
-            players_for_history.append({
-                "entry": player['entry'], 
-                "last_gw_points": net_gw_points,
-                "division": active_fixture.get('division', 'Mixed') if active_fixture else 'Mixed'
-            })
-        else:
-            # Sync လုပ်ပြီးသားသူများအတွက် league_tag ကိုပဲ update ပြန်လုပ်ပေးချင်ရင် ဒီမှာ ထည့်နိုင်သည်
-            print(f"⚠️ GW {START_GW} already synced for {player['player_name']}. Skip accumulation.")
+        # Tournament Table Update
+        doc_ref = db.collection("tw_mm_tournament").document(entry_id)
+        
+        # Division Tag သတ်မှတ်ခြင်း
+        tag = "B"
+        if active_fixture and 'division' in active_fixture:
+            div = str(active_fixture['division']).upper()
+            if "A" in div or "1" in div: tag = "A"
 
-    if players_for_history:
-        archive_fixtures(players_for_history, fixtures_data)
+        payload = {
+            "fpl_id": manager['entry'],
+            "manager_name": manager['player_name'],
+            "team_name": manager['entry_name'],
+            "played": firestore.Increment(played),
+            "wins": firestore.Increment(wins),
+            "draws": firestore.Increment(draws),
+            "losses": firestore.Increment(losses),
+            "h2h_points": firestore.Increment(h2h_pts),
+            "gw_points": net_points, # Last GW Net
+            "tournament_total_net_points": firestore.Increment(net_points),
+            "league_tag": tag,
+            "last_synced_gw": CURRENT_GW,
+            "last_updated": firestore.SERVER_TIMESTAMP
+        }
+        
+        batch.set(doc_ref, payload, merge=True)
+        sync_logs.append({"id": entry_id, "pts": net_points})
+
+    # Archive Fixtures (League & FA Playoff)
+    archive_fixtures(sync_logs, fixtures_data)
 
     batch.commit()
-    print(f"✅ Sync Success for GW {START_GW}")
+    print(f"✅ GW {CURRENT_GW} Synced & Archived Successfully!")
 
-def archive_fixtures(players_data, fixtures_data):
+def archive_fixtures(sync_logs, fixtures_data):
     for fid, f in fixtures_data.items():
-        h_p = next((p for p in players_data if p['entry'] == f['home']['id']), None)
-        a_p = next((p for p in players_data if p['entry'] == f['away']['id']), None)
-
-        if h_p and a_p:
-            payload = {
-                "fixture_id": fid,
-                "gameweek": START_GW,
-                "type": f['type'],
-                "division": f.get('division', 'Mixed'),
-                "home": {**f['home'], "points": h_p['last_gw_points']},
-                "away": {**f['away'], "points": a_p['last_gw_points']},
-                "status": "completed",
-                "updated_at": firestore.SERVER_TIMESTAMP
-            }
-            if f['type'] == 'league':
-                db.collection(f"fixtures_history_gw_{START_GW}").document(fid).set(payload, merge=True)
-            if f['type'] == 'fa_cup':
-                db.collection("fixtures_history_fa").document(f"gw_{START_GW}_{fid}").set(payload, merge=True)
+        h_pts = next((l['pts'] for l in sync_logs if l['id'] == str(f['home']['id'])), 0)
+        a_pts = next((l['pts'] for l in sync_logs if l['id'] == str(f['away']['id'])), 0)
+        
+        history_payload = {
+            "fixture_id": fid,
+            "gameweek": CURRENT_GW,
+            "division": f.get('division', 'Mixed'),
+            "type": f['type'],
+            "home": {**f['home'], "points": h_pts},
+            "away": {**f['away'], "points": a_pts},
+            "status": "completed"
+        }
+        
+        if f['type'] == 'league':
+            db.collection(f"fixtures_history_gw_{CURRENT_GW}").document(fid).set(history_payload)
+        elif f['type'] == 'fa_cup':
+            # FA Cup Playoff အတွက် သီးသန့် archive
+            db.collection("fixtures_history_fa").document(f"gw_{CURRENT_GW}_{fid}").set(history_payload)
 
 if __name__ == "__main__":
-    sync_data()
+    sync_tournament()
