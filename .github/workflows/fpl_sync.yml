@@ -3,7 +3,7 @@ name: TW MM Tournament Sync Robot
 on:
   schedule:
     - cron: '0 */6 * * *'
-  workflow_dispatch: # လိုအပ်ရင် Manual နှိပ်လို့ရအောင် ထားထားပေးပါတယ်
+  workflow_dispatch:
 
 jobs:
   fpl_sync_job:
@@ -23,19 +23,16 @@ jobs:
           python -m pip install --upgrade pip
           pip install requests firebase-admin
 
-      # ၁။ ပွဲစဉ်ဇယားစစ်ဆေးပြီး အလိုအလျောက်ထုတ်ပေးခြင်း
-      - name: Auto Run Fixture Generator
+      - name: Run Fixture Generator
         env:
           FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
         run: python scripts/fixture.py
 
-      # ၂။ အမှတ်များ Sync လုပ်ခြင်း
       - name: Run FPL Rankings Sync
         env:
           FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
         run: python scripts/sync_fpl.py
 
-      # ၃။ Scout Data Sync လုပ်ခြင်း
       - name: Run Scout Firebase Sync
         env:
           FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
