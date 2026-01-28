@@ -93,5 +93,12 @@ def generate_fa_fixtures():
             "gameweek": NEXT_GW,
             "type": "fa_cup",
             "home": {**bye_player, "points": 1},
-            
-            "away":
+            "away": {"id": "BYE", "name": "No Opponent", "points": 0},
+            "status": "completed"
+        })
+
+    batch.commit()
+    print(f"✅ GW {NEXT_GW} Fixtures Successfully Generated!")
+
+if __name__ == "__main__":
+    generate_fa_fixtures()
