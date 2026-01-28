@@ -3,8 +3,48 @@
  */
 window.renderScout = async function() {
     const mainRoot = document.getElementById('main-root');
+    
+    // CSS Header နဲ့ Pitch Design များ
+    const scoutStyle = document.createElement('style');
+    scoutStyle.innerHTML = `
+        .pitch-container {
+            background: linear-gradient(to bottom, #0a4d0a 0%, #063306 100%);
+            background-image: repeating-linear-gradient(0deg, transparent, transparent 19%, rgba(0,0,0,0.1) 20%);
+            border-radius: 8px;
+            padding: 20px 5px;
+            min-height: 400px;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-around;
+            border: 2px solid #1a3d1a;
+            box-shadow: inset 0 0 50px rgba(0,0,0,0.5);
+        }
+        .jersey-icon {
+            font-size: 1.8rem;
+            position: relative;
+            margin-bottom: 2px;
+            transition: transform 0.2s;
+        }
+        .jersey-gk { color: #f9d71c; } /* Goalkeeper - Yellow */
+        .jersey-field { color: #3bffee; } /* Outfield - Cyan/Blue */
+        .jersey-bench { color: #ffffff; opacity: 0.8; } /* Bench - White */
+        
+        .badge-common {
+            position: absolute;
+            top: -12px;
+            right: -5px;
+            font-size: 0.6rem;
+            padding: 1px 4px;
+            border-radius: 3px;
+            font-weight: 900;
+            z-index: 5;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.5);
+        }
+    `;
+    document.head.appendChild(scoutStyle);
+
     mainRoot.innerHTML = `
-        <div id="scout-header" style="margin-bottom: 20px;">
+        <div id="scout-header" style="margin-bottom: 20px; padding: 10px;">
             <h3 class="gold-text">🔭 SCOUT CENTER</h3>
             <div style="display: flex; gap: 8px; margin-bottom: 15px;">
                 <button id="btn-p" class="primary-btn" style="flex:1; font-size:0.75rem;" onclick="window.switchTab('p')">PLAYER SCOUT</button>
@@ -133,7 +173,7 @@ window.showPDetail = (id) => {
 async function loadLeagueData() {
     const container = document.getElementById('scout-container');
     container.innerHTML = `
-        <div style="display:flex; gap:5px; margin-bottom:12px;">
+        <div style="display:flex; gap:5px; margin-bottom:12px; padding: 0 5px;">
             <button id="l-a" class="primary-btn" style="flex:1; height:38px; font-size:0.7rem;" onclick="window.fetchL('League_A')">LEAGUE A</button>
             <button id="l-b" class="primary-btn" style="flex:1; height:38px; font-size:0.7rem; background:#222;" onclick="window.fetchL('League_B')">LEAGUE B</button>
         </div>
@@ -187,7 +227,7 @@ window.reSortL = (t) => {
 };
 
 /**
- * ၅။ Pitch View (Fixed Official Vice Captain Display)
+ * ၅။ Pitch View (Official Styling)
  */
 window.showTPitch = (id) => {
     const t = window.allLeagues.find(x => x.entry_id == id);
@@ -199,11 +239,11 @@ window.showTPitch = (id) => {
     const starters = lineup.filter(p => p.multiplier > 0);
     const bench = lineup.filter(p => p.multiplier === 0);
 
-    // 🔥 အသစ်ပြင်ဆင်ချက် - တစ်သင်းလုံးစာ VC ကို ဒီမှာတင် ရှာထားမယ်
+    // VC ရှာဖွေခြင်း
     const realVC = starters.find(p => p.is_vice_captain === true);
 
     modal.innerHTML = `
-        <div class="profile-card" style="width:98%; max-width:400px; padding:15px; background:#041a04; border:1px solid #1a3d1a;" onclick="event.stopPropagation()">
+        <div class="profile-card" style="width:96%; max-width:400px; padding:15px; background:#041a04; border:1px solid #1a3d1a;" onclick="event.stopPropagation()">
             <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:10px;">
                 <div>
                     <h4 style="margin:0; font-size:1rem; color:var(--gold);">${t.team_name}</h4>
@@ -214,23 +254,24 @@ window.showTPitch = (id) => {
                 </div>
             </div>
 
-            <div class="pitch-container" style="background: linear-gradient(to bottom, #0a4d0a 0%, #063306 100%); border-radius:8px; padding:20px 5px; min-height:380px; display:flex; flex-direction:column; justify-content:space-around; border:1px solid #1a3d1a; box-shadow: inset 0 0 50px rgba(0,0,0,0.5);">
-                <div style="display:flex; justify-content:center; gap:8px;">${renderPitchPlayers(starters.filter(p=>p.pos==='FWD'), realVC)}</div>
-                <div style="display:flex; justify-content:center; gap:8px;">${renderPitchPlayers(starters.filter(p=>p.pos==='MID'), realVC)}</div>
-                <div style="display:flex; justify-content:center; gap:8px;">${renderPitchPlayers(starters.filter(p=>p.pos==='DEF'), realVC)}</div>
-                <div style="display:flex; justify-content:center; gap:8px;">${renderPitchPlayers(starters.filter(p=>p.pos==='GKP'), realVC)}</div>
+            <div class="pitch-container">
+                <div style="display:flex; justify-content:center; gap:5px;">${renderPitchPlayers(starters.filter(p=>p.pos==='FWD'), realVC)}</div>
+                <div style="display:flex; justify-content:center; gap:5px;">${renderPitchPlayers(starters.filter(p=>p.pos==='MID'), realVC)}</div>
+                <div style="display:flex; justify-content:center; gap:5px;">${renderPitchPlayers(starters.filter(p=>p.pos==='DEF'), realVC)}</div>
+                <div style="display:flex; justify-content:center; gap:5px;">${renderPitchPlayers(starters.filter(p=>p.pos==='GKP'), realVC)}</div>
             </div>
 
-            <div style="margin-top:12px; background:rgba(0,0,0,0.4); padding:12px; border-radius:8px; display:flex; justify-content:space-between; border:1px solid #222; gap:5px;">
+            <div style="margin-top:12px; background:rgba(0,0,0,0.6); padding:12px; border-radius:12px; display:flex; justify-content:space-between; border:1px solid rgba(255,255,255,0.1); gap:5px;">
                 ${bench.map(p => `
                     <div style="text-align:center; flex:1;">
-                        <div style="font-size:1.5rem; filter: grayscale(100%);">👕</div>
-                        <div style="font-size:0.6rem; color:#fff; font-weight:bold; margin-top:3px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${p.name}</div>
-                        <div style="font-size:0.7rem; color:var(--gold); font-weight:900;">${p.points}</div>
+                        <div class="jersey-icon jersey-bench">👕</div>
+                        <div style="background:#fff; color:#000; font-size:0.55rem; font-weight:bold; padding:1px 2px; border-radius:2px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; width:100%;">${p.name}</div>
+                        <div style="font-size:0.7rem; color:#fff; font-weight:900;">${p.points}</div>
                     </div>
                 `).join('')}
             </div>
-            <button class="primary-btn" style="margin-top:15px; width:100%; background:#fff; color:#000; font-weight:bold; height:45px;" onclick="this.parentElement.parentElement.remove()">BACK</button>
+            
+            <button class="primary-btn" style="margin-top:15px; width:100%; background:#fff; color:#000; font-weight:900; height:45px; border-radius:8px;" onclick="this.parentElement.parentElement.remove()">BACK TO LIST</button>
         </div>
     `;
     document.body.appendChild(modal);
@@ -240,30 +281,31 @@ function renderPitchPlayers(arr, realVC) {
     return arr.map(p => {
         let capBadge = '';
         
-        // ၁။ Captain / Triple Captain Badge
+        // Captain Badge Logic
         if (p.is_captain) {
             const label = p.multiplier === 3 ? 'TC' : 'C';
             const bg = p.multiplier === 3 ? '#ff4444' : '#000';
-            capBadge = `<div style="position:absolute; top:-12px; right:0; background:${bg}; color:var(--gold); font-size:0.65rem; padding:1px 4px; border:1px solid var(--gold); border-radius:3px; font-weight:900; z-index:5;">${label}</div>`;
+            capBadge = `<div class="badge-common" style="background:${bg}; color:var(--gold); border:1px solid var(--gold);">${label}</div>`;
         } 
-        // ၂။ Official Vice Captain Logic
-        // တကယ် VC ပေးထားတဲ့ ID နဲ့ ဒီလူရဲ့ ID တူမှသာ Badge ပြမယ်
+        // Vice Captain Badge Logic
         else if (realVC && p.id === realVC.id) { 
-            capBadge = `<div style="position:absolute; top:-12px; right:0; background:#333; color:#fff; font-size:0.65rem; padding:1px 4px; border:1px solid #fff; border-radius:3px; font-weight:900; z-index:5;">V</div>`;
+            capBadge = `<div class="badge-common" style="background:#333; color:#fff; border:1px solid #fff;">V</div>`;
         }
 
         const score = (p.points || 0) * (p.multiplier || 1);
+        // GK ကို Yellow Jersey ပေးခြင်း
+        const jerseyType = p.pos === 'GKP' ? 'jersey-gk' : 'jersey-field';
 
         return `
-            <div style="text-align:center; width:75px; position:relative;">
-                <div style="font-size:1.8rem; position:relative; margin-bottom:2px;">
+            <div style="text-align:center; width:68px; position:relative;">
+                <div class="jersey-icon ${jerseyType}">
                     ${capBadge}
                     👕
                 </div>
-                <div style="background:rgba(0,0,0,0.85); color:#fff; font-size:0.6rem; padding:2px 4px; border-radius:3px; max-width:100%; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; border:0.5px solid #333;">
+                <div style="background:rgba(0,0,0,0.9); color:#fff; font-size:0.55rem; padding:2px 3px; border-radius:2px; width:100%; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; border:0.5px solid #444; font-weight:bold;">
                     ${p.name}
                 </div>
-                <div style="font-size:0.75rem; color:var(--gold); font-weight:900; text-shadow: 1px 1px #000;">
+                <div style="font-size:0.8rem; color:var(--gold); font-weight:900; text-shadow: 1px 1px 2px #000; margin-top:1px;">
                     ${score}
                 </div>
             </div>
