@@ -4,7 +4,7 @@
 window.renderScout = async function() {
     const mainRoot = document.getElementById('main-root');
     
-    // CSS Header, Pitch Design & SVG Jersey Fix
+    // CSS Design & SVG Jersey Fix
     const scoutStyle = document.createElement('style');
     scoutStyle.innerHTML = `
         /* Pitch & Formation Styles */
@@ -21,7 +21,7 @@ window.renderScout = async function() {
             box-shadow: inset 0 0 50px rgba(0,0,0,0.6);
         }
         
-        /* SVG Jersey Styles - Emoji ထက်ပိုမိုစိတ်ချရသည် */
+        /* SVG Jersey Styles - Goalkeeper Yellow Fix */
         .jersey-svg {
             width: 32px;
             height: 32px;
@@ -44,7 +44,6 @@ window.renderScout = async function() {
             box-shadow: 0 2px 4px rgba(0,0,0,0.5);
         }
 
-        /* Position Filter Buttons */
         .pos-filter-container {
             display: flex; gap: 6px; margin-bottom: 15px; 
             padding: 0 10px; overflow-x: auto;
@@ -165,7 +164,7 @@ window.reSortP = (t) => {
 };
 
 /**
- * ၄။ League Scout
+ * ၄။ League Scout & Pitch View
  */
 async function loadLeagueData() {
     const container = document.getElementById('scout-container');
@@ -223,9 +222,6 @@ window.reSortL = (t) => {
     displayLeagueRows(sorted);
 };
 
-/**
- * ၅။ Pitch View & SVG Jersey Implementation
- */
 window.showTPitch = (id) => {
     const t = window.allLeagues.find(x => x.entry_id == id);
     const modal = document.createElement('div');
@@ -256,15 +252,19 @@ window.showTPitch = (id) => {
             </div>
 
             <div style="margin-top:12px; background:rgba(0,0,0,0.6); padding:10px; border-radius:12px; display:flex; justify-content:space-around; border:1px solid rgba(255,255,255,0.1);">
-                ${bench.map(p => `
-                    <div style="text-align:center;">
-                        <svg class="jersey-svg jersey-bench-svg" viewBox="0 0 24 24" style="width:24px; height:24px;">
-                            <path d="M13,2V4H11V2H8V4H6V7C6,8.1 6.9,9 8,9V22H16V9C17.1,9 18,8.1 18,7V4H16V2H13Z" />
-                        </svg>
-                        <div style="background:#fff; color:#000; font-size:0.5rem; font-weight:bold; padding:1px 3px; border-radius:2px; margin-top:2px;">${p.name}</div>
-                        <div style="font-size:0.65rem; color:#fff; font-weight:900;">${p.points}</div>
-                    </div>
-                `).join('')}
+                ${bench.map(p => {
+                    const isBenchGK = p.pos && p.pos.toUpperCase() === 'GKP';
+                    const benchJerseyClass = isBenchGK ? 'jersey-gk-svg' : 'jersey-bench-svg';
+                    return `
+                        <div style="text-align:center; flex:1;">
+                            <svg class="jersey-svg ${benchJerseyClass}" viewBox="0 0 24 24" style="width:24px; height:24px;">
+                                <path d="M13,2V4H11V2H8V4H6V7C6,8.1 6.9,9 8,9V22H16V9C17.1,9 18,8.1 18,7V4H16V2H13Z" />
+                            </svg>
+                            <div style="background:#fff; color:#000; font-size:0.5rem; font-weight:bold; padding:1px 3px; border-radius:2px; margin-top:2px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${p.name}</div>
+                            <div style="font-size:0.65rem; color:#fff; font-weight:900;">${p.points}</div>
+                        </div>
+                    `;
+                }).join('')}
             </div>
             <button class="primary-btn" style="margin-top:15px; background:#fff; color:#000;" onclick="this.parentElement.parentElement.remove()">BACK TO LIST</button>
         </div>
@@ -303,7 +303,7 @@ function renderPitchPlayers(arr, realVC) {
     }).join('');
 }
 
-// Player Detail Modal (Logic မပျက်စေရန် ထည့်ပေးထားသည်)
+// Player Detail Modal
 window.showPDetail = (id) => {
     const p = window.allPlayers.find(x => x.id === id);
     const modal = document.createElement('div');
