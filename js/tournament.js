@@ -1,3 +1,32 @@
+/**
+ * ၁။ Tournament Standings Render လုပ်ခြင်း
+ */
+window.renderLeagues = function() {
+    const mainRoot = document.getElementById('main-root');
+    if (!mainRoot) return;
+
+    mainRoot.innerHTML = `
+        <div style="padding: 12px; max-width: 500px; margin: 0 auto; font-family: 'Inter', sans-serif;">
+            <div style="display: flex; background: #161616; padding: 4px; border-radius: 50px; margin-bottom: 18px; border: 1px solid #222;">
+                <button id="btn-divA" onclick="window.filterDivision('A')" 
+                    style="flex: 1; padding: 10px; border: none; border-radius: 40px; font-weight: 800; cursor: pointer; transition: 0.3s; background: #D4AF37; color: #000; font-size: 0.8rem;">
+                    DIVISION 1
+                </button>
+                <button id="btn-divB" onclick="window.filterDivision('B')" 
+                    style="flex: 1; padding: 10px; border: none; border-radius: 40px; font-weight: 800; cursor: pointer; transition: 0.3s; background: transparent; color: #666; font-size: 0.8rem;">
+                    DIVISION 2
+                </button>
+            </div>
+            <div id="league-content"></div>
+        </div>
+    `;
+    // အစပိုင်းမှာ Division A ကို အရင်ပြထားမယ်
+    setTimeout(() => { window.filterDivision('A'); }, 100);
+};
+
+/**
+ * ၂။ Division အလိုက် ဒေတာပြသခြင်း
+ */
 window.filterDivision = function(divTag) {
     const content = document.getElementById('league-content');
     const btnA = document.getElementById('btn-divA');
@@ -13,32 +42,32 @@ window.filterDivision = function(divTag) {
         btnA.style.background = 'transparent'; btnA.style.color = '#666';
     }
 
-    // 🛑 Index Error မတက်အောင် orderBy ကို ဖြုတ်ထားပါတယ်
+    // 🔥 Index Error မတက်အောင် .orderBy မသုံးဘဲ .where တစ်ခုတည်းနဲ့ ဆွဲထုတ်ပါတယ်
     db.collection("tw_mm_tournament")
       .where("league_tag", "==", divTag)
       .onSnapshot((snapshot) => {
         if (snapshot.empty) {
-            content.innerHTML = `<div style="text-align:center; padding:50px; color:#444;">NO DATA IN DIVISION ${divTag}</div>`;
+            content.innerHTML = `<div style="text-align:center; padding:50px; color:#444;">NO DATA FOUND FOR DIVISION ${divTag}</div>`;
             return;
         }
 
-        // ၁။ ဒေတာများကို Array ထဲထည့်ခြင်း
+        // ၁။ ဒေတာများကို Array ထဲအရင်ထည့်သည်
         let players = [];
         snapshot.forEach((doc) => {
             players.push(doc.data());
         });
 
-        // ၂။ Sorting Logic (အမှတ်တူရင် Week Point များသူကို အပေါ်တင်သည်)
+        // ၂။ ⚡ Sorting Logic (PTS တူရင် GW Points နဲ့စီသည်)
         players.sort((a, b) => {
-            // ပထမအဆင့်: H2H Points (PTS) အများဆုံးသူကို အရင်စီသည်
+            // H2H Points (PTS) ကို အရင်ယှဉ်သည်
             if ((b.h2h_points || 0) !== (a.h2h_points || 0)) {
                 return (b.h2h_points || 0) - (a.h2h_points || 0);
             }
-            // ဒုတိယအဆင့် (Tie-breaker): PTS တူရင် GW Points များသူကို အပေါ်တင်သည်
+            // PTS တူနေလျှင် GW Points များသူကို အပေါ်တင်သည်
             return (b.gw_points || 0) - (a.gw_points || 0);
         });
 
-        // ၃။ HTML Render လုပ်ခြင်း
+        // ၃။ HTML Table တည်ဆောက်ခြင်း
         let html = `
             <div style="display: flex; justify-content: space-between; padding: 0 10px 10px; font-size: 0.65rem; color: #555; font-weight: 800; text-transform: uppercase;">
                 <span># TEAM INFO</span>
@@ -82,5 +111,8 @@ window.filterDivision = function(divTag) {
         });
 
         content.innerHTML = html;
-      });
+    }, (error) => {
+        console.error("Firestore Error:", error);
+        content.innerHTML = `<div style="text-align:center; padding:20px; color:red;">Data Error: ${error.message}</div>`;
+    });
 };
