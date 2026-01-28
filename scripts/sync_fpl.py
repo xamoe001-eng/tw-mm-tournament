@@ -6,13 +6,18 @@ import json
 import random
 import time
 
-# ၁။ Firebase ချိတ်ဆက်ခြင်း
+# ၁။ Firebase ချိတ်ဆက်ခြင်း (Secret logic ပြင်ဆင်ပြီး)
 def initialize_firebase():
     if not firebase_admin._apps:
         service_account_info = os.environ.get('FIREBASE_SERVICE_ACCOUNT')
         if service_account_info:
-            cred = credentials.Certificate(json.loads(service_account_info))
+            # GitHub Secrets မှတစ်ဆင့် ယူမည်
+            print("✅ Using FIREBASE_SERVICE_ACCOUNT from GitHub Secrets")
+            cred_dict = json.loads(service_account_info)
+            cred = credentials.Certificate(cred_dict)
         else:
+            # Local တွင် စမ်းသပ်ရန်
+            print("ℹ️ Local mode: Looking for serviceAccountKey.json")
             cred = credentials.Certificate('serviceAccountKey.json')
         firebase_admin.initialize_app(cred)
     return firestore.client()
@@ -22,13 +27,13 @@ db = initialize_firebase()
 # ၂။ Configuration
 LEAGUE_ID = "400231"
 FPL_API = "https://fantasy.premierleague.com/api/"
-CURRENT_GW = 23  # 👈 ပြီးသွားတဲ့ GW ကို ဒီမှာ ပြောင်းပြီး Run ပါ
+CURRENT_GW = 23  # 👈 ကျင်းပနေသည့် GW ကို ဤနေရာတွင် ပြောင်းပါ
 
 def get_net_points(entry_id, gw_num):
     """ Chip Points (TC/BB) နှင့် Transfer Hits များကို နှုတ်ပြီး Net Point တွက်ပေးသည် """
     try:
         url = f"{FPL_API}entry/{entry_id}/event/{gw_num}/picks/"
-        res = requests.get(url).json()
+        res = requests.get(url, timeout=10).json()
         
         raw_points = res['entry_history']['points']
         transfer_cost = res['entry_history']['event_transfers_cost']
@@ -36,52 +41,60 @@ def get_net_points(entry_id, gw_num):
         
         active_chip = res.get('active_chip')
         
-        # Triple Captain Logic: ၁ ဆ ပြန်နှုတ် (Tournament တွင် ၂ ဆပဲ ယူရန်)
+        # Triple Captain Logic
         if active_chip == '3xc':
             cap_id = next(p for p in res['picks'] if p['is_captain'])['element']
-            p_res = requests.get(f"{FPL_API}element-summary/{cap_id}/").json()
+            p_res = requests.get(f"{FPL_API}element-summary/{cap_id}/", timeout=10).json()
             cap_pts = next(e['event_points'] for e in p_res['history'] if e['event'] == gw_num)
             net_points -= cap_pts
             
-        # Bench Boost Logic: Bench အမှတ် ၄ ယောက်လုံးကို ပြန်နှုတ်
+        # Bench Boost Logic
         elif active_chip == 'bboost':
             bench_ids = [p['element'] for p in res['picks'][11:]]
             for b_id in bench_ids:
-                b_res = requests.get(f"{FPL_API}element-summary/{b_id}/").json()
+                b_res = requests.get(f"{FPL_API}element-summary/{b_id}/", timeout=10).json()
                 b_pts = next(e['event_points'] for e in b_res['history'] if e['event'] == gw_num)
                 net_points -= b_pts
 
         return net_points
-    except:
+    except Exception as e:
+        print(f"⚠️ Error fetching points for {entry_id}: {e}")
         return 0
 
 def sync_tournament():
     print(f"--- 🚀 Tournament Engine Started: GW {CURRENT_GW} ---")
     
     # Standings ရယူခြင်း
-    r = requests.get(f"{FPL_API}leagues-classic/{LEAGUE_ID}/standings/").json()
-    standings = r['standings']['results']
+    try:
+        r = requests.get(f"{FPL_API}leagues-classic/{LEAGUE_ID}/standings/", timeout=10).json()
+        standings = r['standings']['results']
+    except Exception as e:
+        print(f"❌ Failed to fetch FPL standings: {e}")
+        return
 
     # Fixtures ရယူခြင်း
     f_ref = db.collection("fixtures").where("gameweek", "==", CURRENT_GW).stream()
     fixtures_data = {f.id: f.to_dict() for f in f_ref}
+
+    if not fixtures_data:
+        print(f"⚠️ No fixtures found for GW {CURRENT_GW}. Please run fixture generator first.")
 
     batch = db.batch()
     sync_logs = []
 
     for manager in standings:
         entry_id = str(manager['entry'])
-        print(f"🔄 Fetching Data for: {manager['player_name']}...")
+        print(f"🔄 Syncing: {manager['player_name']}...")
         
         net_pts = get_net_points(entry_id, CURRENT_GW)
         
-        # H2H Logic (Division A/B အတွက်)
+        # H2H Logic
         played, wins, draws, losses, h2h_pts = 0, 0, 0, 0, 0
-        active_fixture = next((f for f in fixtures_data.values() if f['home']['id'] == manager['entry'] or f['away']['id'] == manager['entry']), None)
+        active_fixture = next((f for f in fixtures_data.values() if str(f['home']['id']) == entry_id or str(f['away']['id']) == entry_id), None)
 
         if active_fixture and active_fixture.get('type') == 'league':
             played = 1
-            is_home = active_fixture['home']['id'] == manager['entry']
+            is_home = str(active_fixture['home']['id']) == entry_id
             opp_id = active_fixture['away']['id'] if is_home else active_fixture['home']['id']
             opp_net = get_net_points(opp_id, CURRENT_GW)
             
@@ -89,7 +102,7 @@ def sync_tournament():
             elif net_pts == opp_net: draws, h2h_pts = 1, 1
             else: losses = 1
 
-        # Tournament Table ကို Update လုပ်ခြင်း
+        # Firestore Update
         doc_ref = db.collection("tw_mm_tournament").document(entry_id)
         batch.set(doc_ref, {
             "fpl_id": manager['entry'],
@@ -106,15 +119,16 @@ def sync_tournament():
             "last_updated": firestore.SERVER_TIMESTAMP
         }, merge=True)
         
-        sync_logs.append({"id": entry_id, "pts": net_pts, "name": manager['player_name'], "team": manager['entry_name']})
+        sync_logs.append({"id": entry_id, "pts": net_pts, "name": manager['player_name']})
+        time.sleep(0.1) # Rate limiting ရှောင်ရန်
 
-    # ရလဒ်များကို History အဖြစ် သိမ်းဆည်းခြင်း
+    # Archive Results
     archive_results(sync_logs, fixtures_data)
     
     batch.commit()
     print(f"✅ GW {CURRENT_GW} Sync & Archive Complete.")
     
-    # FA Cup Playoff: နောက်တစ်ဆင့်အတွက် ပွဲစဉ် Auto ထုတ်ခြင်း
+    # FA Cup Playoff: အလိုအလျောက် ပွဲစဉ်ထုတ်ခြင်း
     generate_next_fa_round(CURRENT_GW)
 
 def archive_results(sync_logs, fixtures_data):
@@ -128,20 +142,18 @@ def archive_results(sync_logs, fixtures_data):
             "status": "completed"
         })
         
-        # FA Cup နှင့် League ခွဲသိမ်းခြင်း
         col = "fixtures_history_fa" if f['type'] == 'fa_cup' else f"fixtures_history_gw_{CURRENT_GW}"
         db.collection(col).document(fid).set(f)
 
 def generate_next_fa_round(gw):
     winners = []
-    # History ထဲမှ နိုင်သူများကို ရွေးထုတ်ခြင်း
     f_ref = db.collection("fixtures_history_fa").where("gameweek", "==", gw).stream()
     
     for doc in f_ref:
         f = doc.to_dict()
         if f['home']['points'] > f['away']['points']: winners.append(f['home'])
         elif f['away']['points'] > f['home']['points']: winners.append(f['away'])
-        else: winners.append(random.choice([f['home'], f['away']])) # သရေကျလျှင် တစ်ယောက်ရွေးမည်
+        else: winners.append(random.choice([f['home'], f['away']]))
 
     if len(winners) >= 2:
         next_gw = gw + 1
@@ -158,7 +170,8 @@ def generate_next_fa_round(gw):
                     "status": "upcoming"
                 })
         batch.commit()
-        print(f"🏆 FA Cup GW {next_gw} Fixtures Generated Successfully!")
+        print(f"🏆 FA Cup GW {next_gw} Fixtures Generated!")
 
 if __name__ == "__main__":
     sync_tournament()
+    
