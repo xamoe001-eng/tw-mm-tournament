@@ -4,64 +4,83 @@
 window.renderScout = async function() {
     const mainRoot = document.getElementById('main-root');
     
-    // CSS ပိုမိုစုံလင်စွာ ထည့်သွင်းခြင်း
+    // CSS အသစ် ထပ်မံဖြည့်စွက်ခြင်း (Jersey Fix ပါဝင်သည်)
     const scoutStyle = document.createElement('style');
     scoutStyle.innerHTML = `
+        /* Pitch & Formation Styles */
         .pitch-container {
             background: linear-gradient(to bottom, #0a4d0a 0%, #063306 100%);
             background-image: repeating-linear-gradient(0deg, transparent, transparent 19%, rgba(0,0,0,0.1) 20%);
-            border-radius: 8px;
-            padding: 20px 5px;
-            min-height: 400px;
+            border-radius: 12px;
+            padding: 25px 5px;
+            min-height: 420px;
             display: flex;
             flex-direction: column;
             justify-content: space-around;
             border: 2px solid #1a3d1a;
-            box-shadow: inset 0 0 50px rgba(0,0,0,0.5);
+            box-shadow: inset 0 0 50px rgba(0,0,0,0.6);
         }
-        .jersey-icon {
+        
+        /* Jersey Styling - Emoji အရောင်မပြောင်းတဲ့ပြဿနာအတွက် Fix */
+        .jersey-wrapper {
             font-size: 1.8rem;
             position: relative;
-            margin-bottom: 2px;
-            transition: transform 0.2s;
+            display: inline-block;
+            line-height: 1;
         }
-        .jersey-gk { color: #f9d71c !important; } /* Goalkeeper - Yellow */
-        .jersey-field { color: #3bffee; } /* Outfield - Cyan */
-        .jersey-bench { color: #ffffff; opacity: 0.8; } /* Bench - White */
         
+        /* Goalkeeper Jersey - Yellow */
+        .jersey-gk { 
+            color: #ffeb3b !important; 
+            text-shadow: 0 0 5px rgba(0,0,0,0.5);
+            -webkit-text-fill-color: #ffeb3b !important;
+        } 
+        
+        /* Outfield Jersey - Cyan */
+        .jersey-field { 
+            color: #3bffee !important; 
+            -webkit-text-fill-color: #3bffee !important;
+        }
+        
+        /* Bench Jersey - White */
+        .jersey-bench { 
+            color: #ffffff !important; 
+            opacity: 0.9;
+            -webkit-text-fill-color: #ffffff !important;
+        }
+
         .badge-common {
             position: absolute;
-            top: -12px;
-            right: -5px;
+            top: -10px;
+            right: -8px;
             font-size: 0.6rem;
-            padding: 1px 4px;
+            padding: 2px 4px;
             border-radius: 3px;
             font-weight: 900;
-            z-index: 5;
+            z-index: 10;
             box-shadow: 0 2px 4px rgba(0,0,0,0.5);
         }
+
+        /* Position Filter Buttons */
+        .pos-filter-container {
+            display: flex; gap: 6px; margin-bottom: 15px; 
+            padding: 0 10px; overflow-x: auto;
+        }
         .pos-filter-btn {
-            background: #222;
-            color: #888;
-            border: 1px solid #333;
-            padding: 5px 10px;
-            border-radius: 4px;
-            font-size: 0.65rem;
-            font-weight: bold;
-            cursor: pointer;
+            background: #1a1a1a; color: #888; border: 1px solid #333;
+            padding: 6px 14px; border-radius: 6px; font-size: 0.7rem;
+            font-weight: 800; cursor: pointer; transition: 0.2s;
         }
         .pos-filter-btn.active {
-            background: var(--gold);
-            color: #000;
-            border-color: var(--gold);
+            background: var(--gold); color: #000; border-color: var(--gold);
         }
     `;
     document.head.appendChild(scoutStyle);
 
     mainRoot.innerHTML = `
-        <div id="scout-header" style="margin-bottom: 20px; padding: 10px;">
-            <h3 class="gold-text">🔭 SCOUT CENTER</h3>
-            <div style="display: flex; gap: 8px; margin-bottom: 15px;">
+        <div id="scout-header" style="margin-bottom: 20px;">
+            <h3 class="gold-text" style="padding-left:10px;">🔭 SCOUT CENTER</h3>
+            <div style="display: flex; gap: 8px; margin-bottom: 15px; padding: 0 10px;">
                 <button id="btn-p" class="primary-btn" style="flex:1; font-size:0.75rem;" onclick="window.switchTab('p')">PLAYER SCOUT</button>
                 <button id="btn-l" class="primary-btn" style="flex:1; font-size:0.75rem; background:#222; color:#888;" onclick="window.switchTab('l')">LEAGUE SCOUT</button>
             </div>
@@ -72,7 +91,7 @@ window.renderScout = async function() {
 };
 
 /**
- * ၂။ Tab Switcher
+ * ၂။ Tab Switcher (Logic မပျက်စေရန်)
  */
 window.switchTab = function(tab) {
     const btnP = document.getElementById('btn-p');
@@ -89,59 +108,54 @@ window.switchTab = function(tab) {
 };
 
 /**
- * ၃။ Player Scout Section (Filter Buttons ပါဝင်သည်)
+ * ၃။ Player Scout (Position Filters ပါဝင်သည်)
  */
 async function loadPlayerData() {
     const container = document.getElementById('scout-container');
     container.innerHTML = `<div class="spinner"></div>`;
-    const snapshot = await db.collection("scout_players").orderBy("total_points", "desc").limit(100).get();
-    let players = [];
-    snapshot.forEach(doc => players.push({id: doc.id, ...doc.data()}));
-    window.allPlayers = players;
-    window.currentPosFilter = 'ALL';
+    
+    try {
+        const snapshot = await db.collection("scout_players").orderBy("total_points", "desc").limit(100).get();
+        let players = [];
+        snapshot.forEach(doc => players.push({id: doc.id, ...doc.data()}));
+        window.allPlayers = players;
+        window.currentPosFilter = 'ALL';
 
-    container.innerHTML = `
-        <div style="display:flex; gap:5px; margin-bottom:15px; padding:0 10px; flex-wrap:nowrap; overflow-x:auto;">
-            <button class="pos-filter-btn active" onclick="window.filterByPos('ALL', this)">ALL</button>
-            <button class="pos-filter-btn" onclick="window.filterByPos('GKP', this)">GKP</button>
-            <button class="pos-filter-btn" onclick="window.filterByPos('DEF', this)">DEF</button>
-            <button class="pos-filter-btn" onclick="window.filterByPos('MID', this)">MID</button>
-            <button class="pos-filter-btn" onclick="window.filterByPos('FWD', this)">FWD</button>
-        </div>
-        <table class="scout-table">
-            <thead>
-                <tr>
-                    <th align="left">PLAYER</th>
-                    <th onclick="window.reSortP('gw')" style="color:var(--gold); cursor:pointer;">GW ▽</th>
-                    <th onclick="window.reSortP('tot')" style="color:var(--gold); cursor:pointer;">TOT ▽</th>
-                    <th onclick="window.reSortP('own')" style="color:var(--gold); cursor:pointer;">OWN% ▽</th>
-                </tr>
-            </thead>
-            <tbody id="p-body"></tbody>
-        </table>
-    `;
-    displayPlayerRows(players);
+        container.innerHTML = `
+            <div class="pos-filter-container">
+                <button class="pos-filter-btn active" onclick="window.filterByPos('ALL', this)">ALL</button>
+                <button class="pos-filter-btn" onclick="window.filterByPos('GKP', this)">GKP</button>
+                <button class="pos-filter-btn" onclick="window.filterByPos('DEF', this)">DEF</button>
+                <button class="pos-filter-btn" onclick="window.filterByPos('MID', this)">MID</button>
+                <button class="pos-filter-btn" onclick="window.filterByPos('FWD', this)">FWD</button>
+            </div>
+            <table class="scout-table">
+                <thead>
+                    <tr>
+                        <th align="left">PLAYER</th>
+                        <th onclick="window.reSortP('gw')" style="color:var(--gold); cursor:pointer;">GW ▽</th>
+                        <th onclick="window.reSortP('tot')" style="color:var(--gold); cursor:pointer;">TOT ▽</th>
+                        <th onclick="window.reSortP('own')" style="color:var(--gold); cursor:pointer;">OWN% ▽</th>
+                    </tr>
+                </thead>
+                <tbody id="p-body"></tbody>
+            </table>
+        `;
+        displayPlayerRows(players);
+    } catch (e) { console.error(e); }
 }
 
 window.filterByPos = (pos, btn) => {
-    // UI Update
     document.querySelectorAll('.pos-filter-btn').forEach(b => b.classList.remove('active'));
     btn.classList.add('active');
-    
     window.currentPosFilter = pos;
-    let filtered = window.allPlayers;
-    if (pos !== 'ALL') {
-        filtered = window.allPlayers.filter(p => p.pos === pos);
-    }
+    let filtered = pos === 'ALL' ? window.allPlayers : window.allPlayers.filter(p => p.pos === pos);
     displayPlayerRows(filtered);
 };
 
 function displayPlayerRows(data) {
     const body = document.getElementById('p-body');
-    if (data.length === 0) {
-        body.innerHTML = `<tr><td colspan="4" align="center" style="padding:20px; color:#666;">No players found</td></tr>`;
-        return;
-    }
+    if (!data.length) { body.innerHTML = '<tr><td colspan="4" align="center">No data</td></tr>'; return; }
     body.innerHTML = data.map(p => `
         <tr onclick="window.showPDetail('${p.id}')">
             <td>
@@ -157,10 +171,7 @@ function displayPlayerRows(data) {
 
 window.reSortP = (t) => {
     let sorted = [...window.allPlayers];
-    if (window.currentPosFilter !== 'ALL') {
-        sorted = sorted.filter(p => p.pos === window.currentPosFilter);
-    }
-    
+    if (window.currentPosFilter !== 'ALL') sorted = sorted.filter(p => p.pos === window.currentPosFilter);
     if (t === 'gw') sorted.sort((a,b) => (b.gw_points || 0) - (a.gw_points || 0));
     else if (t === 'tot') sorted.sort((a,b) => b.total_points - a.total_points);
     else if (t === 'own') sorted.sort((a,b) => parseFloat(b.ownership || 0) - parseFloat(a.ownership || 0));
@@ -181,43 +192,34 @@ window.showPDetail = (id) => {
     `).join('') : '<div style="color:#555; font-size:0.7rem;">No upcoming fixtures</div>';
 
     modal.innerHTML = `
-        <div class="profile-card" style="max-width:340px; border: 1px solid #333;" onclick="event.stopPropagation()">
+        <div class="profile-card" onclick="event.stopPropagation()">
             <div style="text-align:center; margin-bottom:15px;">
-                <h3 class="gold-text" style="margin:0; font-size:1.2rem;">${p.full_name || p.name}</h3>
-                <small style="color:#888; text-transform:uppercase; letter-spacing:1px;">${p.team_full || p.team} | ${p.pos}</small>
+                <h3 class="gold-text" style="margin:0;">${p.full_name || p.name}</h3>
+                <small style="color:#888;">${p.team_full || p.team} | ${p.pos}</small>
             </div>
-            
-            <div class="profile-info" style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:8px; margin-bottom:15px;">
+            <div class="profile-info">
                 <div class="info-item"><span class="label">GOALS</span><span class="val">${p.goals||0}</span></div>
                 <div class="info-item"><span class="label">ASSISTS</span><span class="val">${p.assists||0}</span></div>
                 <div class="info-item"><span class="label">CS</span><span class="val">${p.clean_sheets||0}</span></div>
                 <div class="info-item"><span class="label">BONUS</span><span class="val">${p.bonus||0}</span></div>
-                <div class="info-item"><span class="label">xG</span><span class="val">${p.xg||0.0}</span></div>
-                <div class="info-item"><span class="label">ICT</span><span class="val">${p.ict||0.0}</span></div>
             </div>
-
-            <div style="margin-bottom:15px; background:rgba(212,175,55,0.05); padding:10px; border-radius:8px; border:1px solid #222;">
-                <div style="font-size:0.65rem; color:var(--gold); margin-bottom:8px; font-weight:bold; letter-spacing:1px;">NEXT 5 MATCHES</div>
-                <div style="display:flex; gap:4px; justify-content:space-between;">${fixtureHtml}</div>
+            <div style="margin-bottom:15px; background:#000; padding:10px; border-radius:8px;">
+                <div style="font-size:0.65rem; color:var(--gold); margin-bottom:8px;">NEXT 5 MATCHES</div>
+                <div style="display:flex; gap:4px;">${fixtureHtml}</div>
             </div>
-
-            <div style="background:#000; padding:10px; border-radius:8px; border:1px solid #222; display:flex; justify-content:space-between; font-size:0.7rem;">
-                <span>Price: <b>£${p.price}m</b></span>
-                <span>Ownership: <b style="color:var(--gold);">${p.ownership}%</b></span>
-            </div>
-            <button class="primary-btn" style="margin-top:15px; width:100%; border-radius:6px;" onclick="this.parentElement.parentElement.remove()">CLOSE</button>
+            <button class="primary-btn" onclick="this.parentElement.parentElement.remove()">CLOSE</button>
         </div>
     `;
     document.body.appendChild(modal);
 };
 
 /**
- * ၄။ League Scout
+ * ၄။ League Scout & ၅။ Pitch View (GK Jersey Fix ပါဝင်သည်)
  */
 async function loadLeagueData() {
     const container = document.getElementById('scout-container');
     container.innerHTML = `
-        <div style="display:flex; gap:5px; margin-bottom:12px; padding: 0 5px;">
+        <div style="display:flex; gap:5px; margin-bottom:12px; padding: 0 10px;">
             <button id="l-a" class="primary-btn" style="flex:1; height:38px; font-size:0.7rem;" onclick="window.fetchL('League_A')">LEAGUE A</button>
             <button id="l-b" class="primary-btn" style="flex:1; height:38px; font-size:0.7rem; background:#222;" onclick="window.fetchL('League_B')">LEAGUE B</button>
         </div>
@@ -270,51 +272,45 @@ window.reSortL = (t) => {
     displayLeagueRows(sorted);
 };
 
-/**
- * ၅။ Pitch View (Official Styling & GK Jersey Fix)
- */
 window.showTPitch = (id) => {
     const t = window.allLeagues.find(x => x.entry_id == id);
     const modal = document.createElement('div');
     modal.className = 'modal-overlay';
     modal.onclick = () => modal.remove();
 
-    const lineup = t.lineup || [];
-    const starters = lineup.filter(p => p.multiplier > 0);
-    const bench = lineup.filter(p => p.multiplier === 0);
-
+    const starters = (t.lineup || []).filter(p => p.multiplier > 0);
+    const bench = (t.lineup || []).filter(p => p.multiplier === 0);
     const realVC = starters.find(p => p.is_vice_captain === true);
 
     modal.innerHTML = `
-        <div class="profile-card" style="width:96%; max-width:400px; padding:15px; background:#041a04; border:1px solid #1a3d1a;" onclick="event.stopPropagation()">
-            <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:10px;">
+        <div class="profile-card" style="width:96%; background:#041a04; border:1px solid #1a3d1a;" onclick="event.stopPropagation()">
+            <div style="display:flex; justify-content:space-between; margin-bottom:10px; text-align:left;">
                 <div>
-                    <h4 style="margin:0; font-size:1rem; color:var(--gold);">${t.team_name}</h4>
-                    <span style="font-size:0.65rem; color:#888;">Hit: <span style="color:#ff4444;">-${t.transfer_cost || 0}</span> | GW: ${t.gw_points}</span>
+                    <h4 style="margin:0; color:var(--gold);">${t.team_name}</h4>
+                    <span style="font-size:0.6rem; color:#888;">Hit: -${t.transfer_cost || 0} | GW: ${t.gw_points}</span>
                 </div>
-                <div style="background:${t.active_chip?'var(--gold)':'#222'}; color:${t.active_chip?'#000':'#888'}; padding:4px 10px; border-radius:4px; font-weight:900; font-size:0.7rem;">
+                <div style="background:var(--gold); color:#000; padding:4px 8px; border-radius:4px; font-weight:900; font-size:0.6rem;">
                     ${t.active_chip ? t.active_chip.toUpperCase() : 'NO CHIP'}
                 </div>
             </div>
 
             <div class="pitch-container">
-                <div style="display:flex; justify-content:center; gap:5px;">${renderPitchPlayers(starters.filter(p=>p.pos==='FWD'), realVC)}</div>
-                <div style="display:flex; justify-content:center; gap:5px;">${renderPitchPlayers(starters.filter(p=>p.pos==='MID'), realVC)}</div>
-                <div style="display:flex; justify-content:center; gap:5px;">${renderPitchPlayers(starters.filter(p=>p.pos==='DEF'), realVC)}</div>
-                <div style="display:flex; justify-content:center; gap:5px;">${renderPitchPlayers(starters.filter(p=>p.pos==='GKP'), realVC)}</div>
+                <div class="pitch-row">${renderPitchPlayers(starters.filter(p=>p.pos==='FWD'), realVC)}</div>
+                <div class="pitch-row">${renderPitchPlayers(starters.filter(p=>p.pos==='MID'), realVC)}</div>
+                <div class="pitch-row">${renderPitchPlayers(starters.filter(p=>p.pos==='DEF'), realVC)}</div>
+                <div class="pitch-row">${renderPitchPlayers(starters.filter(p=>p.pos==='GKP'), realVC)}</div>
             </div>
 
-            <div style="margin-top:12px; background:rgba(0,0,0,0.6); padding:12px; border-radius:12px; display:flex; justify-content:space-between; border:1px solid rgba(255,255,255,0.1); gap:5px;">
+            <div style="margin-top:12px; background:rgba(0,0,0,0.6); padding:10px; border-radius:12px; display:flex; justify-content:space-around; border:1px solid rgba(255,255,255,0.1);">
                 ${bench.map(p => `
-                    <div style="text-align:center; flex:1;">
-                        <div class="jersey-icon jersey-bench">👕</div>
-                        <div style="background:#fff; color:#000; font-size:0.55rem; font-weight:bold; padding:1px 2px; border-radius:2px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; width:100%;">${p.name}</div>
-                        <div style="font-size:0.7rem; color:#fff; font-weight:900;">${p.points}</div>
+                    <div style="text-align:center;">
+                        <div class="jersey-wrapper jersey-bench">👕</div>
+                        <div style="background:#fff; color:#000; font-size:0.5rem; font-weight:bold; padding:1px 3px; border-radius:2px;">${p.name}</div>
+                        <div style="font-size:0.65rem; color:#fff; font-weight:900;">${p.points}</div>
                     </div>
                 `).join('')}
             </div>
-            
-            <button class="primary-btn" style="margin-top:15px; width:100%; background:#fff; color:#000; font-weight:900; height:45px; border-radius:8px;" onclick="this.parentElement.parentElement.remove()">BACK TO LIST</button>
+            <button class="primary-btn" style="margin-top:15px; background:#fff;" onclick="this.parentElement.parentElement.remove()">BACK</button>
         </div>
     `;
     document.body.appendChild(modal);
@@ -323,33 +319,25 @@ window.showTPitch = (id) => {
 function renderPitchPlayers(arr, realVC) {
     return arr.map(p => {
         let capBadge = '';
-        
         if (p.is_captain) {
             const label = p.multiplier === 3 ? 'TC' : 'C';
-            const bg = p.multiplier === 3 ? '#ff4444' : '#000';
-            capBadge = `<div class="badge-common" style="background:${bg}; color:var(--gold); border:1px solid var(--gold);">${label}</div>`;
-        } 
-        else if (realVC && p.id === realVC.id) { 
+            capBadge = `<div class="badge-common" style="background:#000; color:var(--gold); border:1px solid var(--gold);">${label}</div>`;
+        } else if (realVC && p.id === realVC.id) { 
             capBadge = `<div class="badge-common" style="background:#333; color:#fff; border:1px solid #fff;">V</div>`;
         }
 
         const score = (p.points || 0) * (p.multiplier || 1);
-        
-        // 🔥 Goalkeeper ဖြစ်ပါက jersey-gk class ကို သေချာစွာ ထည့်သွင်းပေးထားပါသည်
-        const jerseyClass = (p.pos === 'GKP') ? 'jersey-gk' : 'jersey-field';
+        const isGK = p.pos && p.pos.toUpperCase() === 'GKP';
+        const jerseyClass = isGK ? 'jersey-gk' : 'jersey-field';
 
         return `
-            <div style="text-align:center; width:68px; position:relative;">
-                <div class="jersey-icon ${jerseyClass}">
+            <div class="player-card-mini" style="position:relative;">
+                <div class="jersey-wrapper ${jerseyClass}">
                     ${capBadge}
                     👕
                 </div>
-                <div style="background:rgba(0,0,0,0.9); color:#fff; font-size:0.55rem; padding:2px 3px; border-radius:2px; width:100%; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; border:0.5px solid #444; font-weight:bold;">
-                    ${p.name}
-                </div>
-                <div style="font-size:0.8rem; color:var(--gold); font-weight:900; text-shadow: 1px 1px 2px #000; margin-top:1px;">
-                    ${score}
-                </div>
+                <div class="player-name-label">${p.name}</div>
+                <div style="font-size:0.75rem; color:var(--gold); font-weight:900;">${score}</div>
             </div>
         `;
     }).join('');
