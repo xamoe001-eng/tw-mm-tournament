@@ -4,7 +4,7 @@
 window.renderScout = async function() {
     const mainRoot = document.getElementById('main-root');
     
-    // CSS Header, Pitch Design & SVG Jersey Styles
+    // CSS Styling - Header, Position Buttons & SVG Jerseys
     const scoutStyle = document.createElement('style');
     scoutStyle.innerHTML = `
         .jersey-svg { width: 32px; height: 32px; margin: 0 auto; display: block; }
@@ -24,8 +24,8 @@ window.renderScout = async function() {
 
     mainRoot.innerHTML = `
         <div id="scout-header" style="margin-bottom: 20px;">
-            <h3 class="gold-text" style="padding-left:10px;">🔭 SCOUT CENTER</h3>
-            <div style="display: flex; gap: 8px; margin-bottom: 15px; padding: 0 10px;">
+            <h3 class="gold-text">🔭 SCOUT CENTER</h3>
+            <div style="display: flex; gap: 8px; margin-bottom: 15px;">
                 <button id="btn-p" class="primary-btn" style="flex:1; font-size:0.75rem;" onclick="window.switchTab('p')">PLAYER SCOUT</button>
                 <button id="btn-l" class="primary-btn" style="flex:1; font-size:0.75rem; background:#222; color:#888;" onclick="window.switchTab('l')">LEAGUE SCOUT</button>
             </div>
@@ -53,7 +53,7 @@ window.switchTab = function(tab) {
 };
 
 /**
- * ၃။ Player Scout Section (Position Filters Added)
+ * ၃။ Player Scout Section (With Position Filters)
  */
 async function loadPlayerData() {
     const container = document.getElementById('scout-container');
@@ -220,7 +220,7 @@ window.reSortL = (t) => {
 };
 
 /**
- * ၅။ Pitch View (Jersey Colors Fixed)
+ * ၅။ Pitch View (Jersey Logic Fixed)
  */
 window.showTPitch = (id) => {
     const t = window.allLeagues.find(x => x.entry_id == id);
