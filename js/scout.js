@@ -4,7 +4,7 @@
 window.renderScout = async function() {
     const mainRoot = document.getElementById('main-root');
     
-    // CSS အသစ် ထပ်မံဖြည့်စွက်ခြင်း (Jersey Fix ပါဝင်သည်)
+    // CSS Header, Pitch Design & SVG Jersey Fix
     const scoutStyle = document.createElement('style');
     scoutStyle.innerHTML = `
         /* Pitch & Formation Styles */
@@ -21,40 +21,23 @@ window.renderScout = async function() {
             box-shadow: inset 0 0 50px rgba(0,0,0,0.6);
         }
         
-        /* Jersey Styling - Emoji အရောင်မပြောင်းတဲ့ပြဿနာအတွက် Fix */
-        .jersey-wrapper {
-            font-size: 1.8rem;
-            position: relative;
-            display: inline-block;
-            line-height: 1;
+        /* SVG Jersey Styles - Emoji ထက်ပိုမိုစိတ်ချရသည် */
+        .jersey-svg {
+            width: 32px;
+            height: 32px;
+            margin: 0 auto;
+            display: block;
         }
-        
-        /* Goalkeeper Jersey - Yellow */
-        .jersey-gk { 
-            color: #ffeb3b !important; 
-            text-shadow: 0 0 5px rgba(0,0,0,0.5);
-            -webkit-text-fill-color: #ffeb3b !important;
-        } 
-        
-        /* Outfield Jersey - Cyan */
-        .jersey-field { 
-            color: #3bffee !important; 
-            -webkit-text-fill-color: #3bffee !important;
-        }
-        
-        /* Bench Jersey - White */
-        .jersey-bench { 
-            color: #ffffff !important; 
-            opacity: 0.9;
-            -webkit-text-fill-color: #ffffff !important;
-        }
+        .jersey-gk-svg { fill: #ffeb3b !important; filter: drop-shadow(0 0 2px rgba(0,0,0,0.5)); }
+        .jersey-field-svg { fill: #3bffee !important; }
+        .jersey-bench-svg { fill: #ffffff !important; opacity: 0.8; }
 
         .badge-common {
             position: absolute;
-            top: -10px;
-            right: -8px;
+            top: -8px;
+            right: -5px;
             font-size: 0.6rem;
-            padding: 2px 4px;
+            padding: 1px 4px;
             border-radius: 3px;
             font-weight: 900;
             z-index: 10;
@@ -74,6 +57,9 @@ window.renderScout = async function() {
         .pos-filter-btn.active {
             background: var(--gold); color: #000; border-color: var(--gold);
         }
+        
+        .pitch-row { display: flex; justify-content: center; gap: 10px; }
+        .player-card-mini { text-align: center; width: 68px; position: relative; }
     `;
     document.head.appendChild(scoutStyle);
 
@@ -91,7 +77,7 @@ window.renderScout = async function() {
 };
 
 /**
- * ၂။ Tab Switcher (Logic မပျက်စေရန်)
+ * ၂။ Tab Switcher
  */
 window.switchTab = function(tab) {
     const btnP = document.getElementById('btn-p');
@@ -108,7 +94,7 @@ window.switchTab = function(tab) {
 };
 
 /**
- * ၃။ Player Scout (Position Filters ပါဝင်သည်)
+ * ၃။ Player Scout Section
  */
 async function loadPlayerData() {
     const container = document.getElementById('scout-container');
@@ -178,43 +164,8 @@ window.reSortP = (t) => {
     displayPlayerRows(sorted);
 };
 
-window.showPDetail = (id) => {
-    const p = window.allPlayers.find(x => x.id === id);
-    const modal = document.createElement('div');
-    modal.className = 'modal-overlay';
-    modal.onclick = () => modal.remove();
-    
-    const fixtureHtml = p.fixtures ? p.fixtures.slice(0, 5).map(f => `
-        <div style="flex:1; background:${f.bg || '#333'}; color:${f.text || '#fff'}; text-align:center; padding:5px 2px; border-radius:4px; font-size:0.6rem; font-weight:bold; min-width:45px; border:1px solid rgba(255,255,255,0.1);">
-            <div>${f.opponent || 'TBC'}</div>
-            <div style="font-size:0.5rem; opacity:0.8;">${f.is_home ? '(H)' : '(A)'}</div>
-        </div>
-    `).join('') : '<div style="color:#555; font-size:0.7rem;">No upcoming fixtures</div>';
-
-    modal.innerHTML = `
-        <div class="profile-card" onclick="event.stopPropagation()">
-            <div style="text-align:center; margin-bottom:15px;">
-                <h3 class="gold-text" style="margin:0;">${p.full_name || p.name}</h3>
-                <small style="color:#888;">${p.team_full || p.team} | ${p.pos}</small>
-            </div>
-            <div class="profile-info">
-                <div class="info-item"><span class="label">GOALS</span><span class="val">${p.goals||0}</span></div>
-                <div class="info-item"><span class="label">ASSISTS</span><span class="val">${p.assists||0}</span></div>
-                <div class="info-item"><span class="label">CS</span><span class="val">${p.clean_sheets||0}</span></div>
-                <div class="info-item"><span class="label">BONUS</span><span class="val">${p.bonus||0}</span></div>
-            </div>
-            <div style="margin-bottom:15px; background:#000; padding:10px; border-radius:8px;">
-                <div style="font-size:0.65rem; color:var(--gold); margin-bottom:8px;">NEXT 5 MATCHES</div>
-                <div style="display:flex; gap:4px;">${fixtureHtml}</div>
-            </div>
-            <button class="primary-btn" onclick="this.parentElement.parentElement.remove()">CLOSE</button>
-        </div>
-    `;
-    document.body.appendChild(modal);
-};
-
 /**
- * ၄။ League Scout & ၅။ Pitch View (GK Jersey Fix ပါဝင်သည်)
+ * ၄။ League Scout
  */
 async function loadLeagueData() {
     const container = document.getElementById('scout-container');
@@ -272,6 +223,9 @@ window.reSortL = (t) => {
     displayLeagueRows(sorted);
 };
 
+/**
+ * ၅။ Pitch View & SVG Jersey Implementation
+ */
 window.showTPitch = (id) => {
     const t = window.allLeagues.find(x => x.entry_id == id);
     const modal = document.createElement('div');
@@ -304,13 +258,15 @@ window.showTPitch = (id) => {
             <div style="margin-top:12px; background:rgba(0,0,0,0.6); padding:10px; border-radius:12px; display:flex; justify-content:space-around; border:1px solid rgba(255,255,255,0.1);">
                 ${bench.map(p => `
                     <div style="text-align:center;">
-                        <div class="jersey-wrapper jersey-bench">👕</div>
-                        <div style="background:#fff; color:#000; font-size:0.5rem; font-weight:bold; padding:1px 3px; border-radius:2px;">${p.name}</div>
+                        <svg class="jersey-svg jersey-bench-svg" viewBox="0 0 24 24" style="width:24px; height:24px;">
+                            <path d="M13,2V4H11V2H8V4H6V7C6,8.1 6.9,9 8,9V22H16V9C17.1,9 18,8.1 18,7V4H16V2H13Z" />
+                        </svg>
+                        <div style="background:#fff; color:#000; font-size:0.5rem; font-weight:bold; padding:1px 3px; border-radius:2px; margin-top:2px;">${p.name}</div>
                         <div style="font-size:0.65rem; color:#fff; font-weight:900;">${p.points}</div>
                     </div>
                 `).join('')}
             </div>
-            <button class="primary-btn" style="margin-top:15px; background:#fff;" onclick="this.parentElement.parentElement.remove()">BACK</button>
+            <button class="primary-btn" style="margin-top:15px; background:#fff; color:#000;" onclick="this.parentElement.parentElement.remove()">BACK TO LIST</button>
         </div>
     `;
     document.body.appendChild(modal);
@@ -328,17 +284,46 @@ function renderPitchPlayers(arr, realVC) {
 
         const score = (p.points || 0) * (p.multiplier || 1);
         const isGK = p.pos && p.pos.toUpperCase() === 'GKP';
-        const jerseyClass = isGK ? 'jersey-gk' : 'jersey-field';
+        const jerseyFillClass = isGK ? 'jersey-gk-svg' : 'jersey-field-svg';
 
         return `
-            <div class="player-card-mini" style="position:relative;">
-                <div class="jersey-wrapper ${jerseyClass}">
+            <div class="player-card-mini">
+                <div style="position:relative;">
                     ${capBadge}
-                    👕
+                    <svg class="jersey-svg ${jerseyFillClass}" viewBox="0 0 24 24">
+                        <path d="M13,2V4H11V2H8V4H6V7C6,8.1 6.9,9 8,9V22H16V9C17.1,9 18,8.1 18,7V4H16V2H13Z" />
+                    </svg>
                 </div>
-                <div class="player-name-label">${p.name}</div>
-                <div style="font-size:0.75rem; color:var(--gold); font-weight:900;">${score}</div>
+                <div class="player-name-label" style="background:rgba(0,0,0,0.8); color:#fff; font-size:0.55rem; padding:1px 3px; border-radius:2px; margin-top:2px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">
+                    ${p.name}
+                </div>
+                <div style="font-size:0.75rem; color:var(--gold); font-weight:900; text-shadow:1px 1px 2px #000;">${score}</div>
             </div>
         `;
     }).join('');
 }
+
+// Player Detail Modal (Logic မပျက်စေရန် ထည့်ပေးထားသည်)
+window.showPDetail = (id) => {
+    const p = window.allPlayers.find(x => x.id === id);
+    const modal = document.createElement('div');
+    modal.className = 'modal-overlay';
+    modal.onclick = () => modal.remove();
+    
+    modal.innerHTML = `
+        <div class="profile-card" onclick="event.stopPropagation()">
+            <div style="text-align:center; margin-bottom:15px;">
+                <h3 class="gold-text" style="margin:0;">${p.full_name || p.name}</h3>
+                <small style="color:#888;">${p.team_full || p.team} | ${p.pos}</small>
+            </div>
+            <div class="profile-info" style="display:grid; grid-template-columns:1fr 1fr; gap:10px; background:#000; padding:10px; border-radius:10px;">
+                <div class="info-item"><span style="color:#666; font-size:0.6rem;">GOALS</span><span class="gold-text">${p.goals||0}</span></div>
+                <div class="info-item"><span style="color:#666; font-size:0.6rem;">ASSISTS</span><span class="gold-text">${p.assists||0}</span></div>
+                <div class="info-item"><span style="color:#666; font-size:0.6rem;">CS</span><span class="gold-text">${p.clean_sheets||0}</span></div>
+                <div class="info-item"><span style="color:#666; font-size:0.6rem;">PRICE</span><span class="gold-text">£${p.price}m</span></div>
+            </div>
+            <button class="primary-btn" style="margin-top:15px;" onclick="this.parentElement.parentElement.remove()">CLOSE</button>
+        </div>
+    `;
+    document.body.appendChild(modal);
+};
