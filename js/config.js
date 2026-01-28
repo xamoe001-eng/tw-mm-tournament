@@ -1,4 +1,4 @@
-// Firebase Configuration (မိတ်ဆွေရဲ့ Project Keys များ)
+// Firebase Configuration
 const firebaseConfig = {
   apiKey: "AIzaSyDE11cAUZfJoZMMCF-eyqGDUioYDQSCWrs",
   authDomain: "tw-fpl-tour.firebaseapp.com",
@@ -9,14 +9,13 @@ const firebaseConfig = {
   measurementId: "G-48KP6S02RK"
 };
 
-// Firebase ကို စတင်ချိတ်ဆက်ခြင်း (Compatibility Version)
+// Firebase Initialize
 firebase.initializeApp(firebaseConfig);
 
-// Database နှင့် Login အတွက် Variable များ သတ်မှတ်ခြင်း
 const db = firebase.firestore();
 const auth = firebase.auth();
 
-// Analytics (Optional - ထည့်ထားချင်ရင်)
-const analytics = firebase.analytics();
+// 🛑 Error တက်တတ်သဖြင့် Analytics ကို ခေတ္တပိတ်ထားပါသည်
+// const analytics = firebase.analytics();
 
 console.log("TW MM Tournament - Firebase Connected! 🏆");
