@@ -22,7 +22,6 @@ FPL_API = "https://fantasy.premierleague.com/api/"
 CURRENT_GW = 23  
 
 def check_gw_status(gw):
-    """ FPL မှာ ဒီ GW ပွဲစဉ်တွေ အကုန်ပြီးပြီလား စစ်ဆေးခြင်း """
     try:
         r_status = requests.get(f"{FPL_API}bootstrap-static/").json()
         current_event = next(e for e in r_status['events'] if e['id'] == gw)
@@ -31,11 +30,9 @@ def check_gw_status(gw):
         return False
 
 def get_net_points(entry_id, gw_num, is_final):
-    """ Live အမှတ်ယူခြင်းနှင့် Chip များ နှုတ်ခြင်း """
     try:
         url = f"{FPL_API}entry/{entry_id}/event/{gw_num}/picks/"
         res = requests.get(url, timeout=10).json()
-        
         raw_points = res['entry_history']['points']
         transfer_cost = res['entry_history']['event_transfers_cost']
         net_points = raw_points - transfer_cost
@@ -53,31 +50,26 @@ def get_net_points(entry_id, gw_num, is_final):
                     b_res = requests.get(f"{FPL_API}element-summary/{b_id}/").json()
                     b_pts = next(e['event_points'] for e in b_res['history'] if e['event'] == gw_num)
                     net_points -= b_pts
-                    
         return net_points
     except:
         return 0
 
 def sync_tournament():
-    # 🔥 Manual Force Sync: အမှတ်တွေ ချက်ချင်းပေါင်းရန် True ဟု ပြင်ထားသည်
+    # 🔥 Collection အသစ်မှာ အမှတ်တွေ တန်းပေါ်စေရန် True ထားပါသည်
     is_gw_finished = True 
-    print(f"--- 🔄 Force Syncing GW {CURRENT_GW} (Status: Finalized) ---")
+    print(f"--- 🔄 Starting Clean Sync for GW {CURRENT_GW} ---")
     
     try:
         r = requests.get(f"{FPL_API}leagues-classic/{LEAGUE_ID}/standings/").json()
         top_48 = sorted(r['standings']['results'], key=lambda x: x['total'], reverse=True)[:48]
     except Exception as e:
-        print(f"Error fetching standings: {e}")
+        print(f"Error: {e}")
         return
 
-    # Fixtures ကို ကြိုဆွဲထားမယ်
     f_ref = db.collection("fixtures").where("gameweek", "==", CURRENT_GW).stream()
     fixtures_list = [f.to_dict() | {'doc_id': f.id} for f in f_ref]
     
-    # Manager တစ်ယောက်ချင်းစီရဲ့ Point တွေကို သိမ်းထားဖို့ dictionary
     manager_scores = {}
-
-    print("Fetching points for all managers...")
     for index, manager in enumerate(top_48):
         entry_id = str(manager['entry'])
         net_pts = get_net_points(entry_id, CURRENT_GW, is_gw_finished)
@@ -89,10 +81,9 @@ def sync_tournament():
         }
 
     batch = db.batch()
+    h2h_results = {}
 
-    # ၁။ Fixtures Update နှင့် H2H Logic တွက်ချက်ခြင်း
-    h2h_results = {} # {manager_id: {'win': 0, 'draw': 0, 'loss': 0}}
-
+    # ၁။ Fixtures & H2H Logic
     for f in fixtures_list:
         fid = f['doc_id']
         h_id = str(f['home']['id'])
@@ -101,15 +92,12 @@ def sync_tournament():
         h_pts = manager_scores.get(h_id, {'pts': 0})['pts']
         a_pts = manager_scores.get(a_id, {'pts': 0})['pts']
 
-        # Fixture points update
-        f_ref_doc = db.collection("fixtures").document(fid)
-        batch.update(f_ref_doc, {
+        batch.update(db.collection("fixtures").document(fid), {
             "home.points": h_pts,
             "away.points": a_pts,
             "status": "completed"
         })
 
-        # H2H Points Logic (နိုင်/ရှုံး/သရေ)
         if h_id not in h2h_results: h2h_results[h_id] = {'w':0, 'd':0, 'l':0}
         if a_id not in h2h_results: h2h_results[a_id] = {'w':0, 'd':0, 'l':0}
 
@@ -123,46 +111,32 @@ def sync_tournament():
             h2h_results[h_id]['d'] += 1
             h2h_results[a_id]['d'] += 1
 
-        # GW ပြီးသွားရင် History သိမ်းမယ်
-        col_hist = "fixtures_history_fa" if f.get('type') == 'fa_cup' else f"fixtures_history_gw_{CURRENT_GW}"
-        hist_ref = db.collection(col_hist).document(fid)
-        batch.set(hist_ref, {**f, "status": "completed", "home": {**f['home'], "points": h_pts}, "away": {**f['away'], "points": a_pts}})
-
     # ၂။ Tournament Standings Update
     for entry_id, data in manager_scores.items():
         doc_ref = db.collection("tw_mm_tournament").document(entry_id)
         div = "Division A" if data['index'] < 24 else "Division B"
-        
         res = h2h_results.get(entry_id, {'w':0, 'd':0, 'l':0})
         h2h_pts = (res['w'] * 3) + (res['d'] * 1)
 
-        # လက်ရှိရမှတ်များကို Update လုပ်ခြင်း
-        update_data = {
+        # 🔥 Collection ဖျက်ပြီးမှ Run မှာ ဖြစ်တဲ့အတွက် Increment မသုံးဘဲ တန်းထည့်ပါမယ်
+        batch.set(doc_ref, {
             "manager_name": data['name'],
             "team_name": data['team'],
             "division": div,
             "gw_live_points": data['pts'],
+            "played": 1,
+            "wins": res['w'],
+            "draws": res['d'],
+            "losses": res['l'],
+            "h2h_points": h2h_pts,
+            "tournament_total_net_points": data['pts'],
+            "last_synced_gw": CURRENT_GW,
             "last_updated": firestore.SERVER_TIMESTAMP
-        }
-
-        # GW ပြီးပြီဖြစ်၍ နိုင်/ရှုံး/ကစားပွဲ အရေအတွက်ကို တစ်ခါတည်းပေါင်းမည်
-        existing = doc_ref.get().to_dict() or {}
-        if existing.get('last_synced_gw') != CURRENT_GW:
-            update_data.update({
-                "played": firestore.Increment(1),
-                "wins": firestore.Increment(res['w']),
-                "draws": firestore.Increment(res['d']),
-                "losses": firestore.Increment(res['l']),
-                "h2h_points": firestore.Increment(h2h_pts),
-                "tournament_total_net_points": firestore.Increment(data['pts']),
-                "last_synced_gw": CURRENT_GW
-            })
-
-        batch.set(doc_ref, update_data, merge=True)
+        }, merge=True)
 
     batch.commit()
-    print(f"✅ GW {CURRENT_GW} Forced Sync completed. Standings and Fixtures updated.")
+    print(f"✅ Clean Sync Completed for GW {CURRENT_GW}.")
 
 if __name__ == "__main__":
-
     sync_tournament()
+    
