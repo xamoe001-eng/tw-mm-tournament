@@ -1,0 +1,25 @@
+name: TW Fixture Generator
+
+on:
+  workflow_dispatch: # ဒါက ကိုယ်တိုင် Manual "Run" နှိပ်ဖို့ပါ
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v3
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.9'
+
+      - name: Install Dependencies
+        run: |
+          pip install requests firebase-admin
+
+      - name: Run Fixture Generator
+        env:
+          FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+        run: python generate_fixtures.py # မိတ်ဆွေရဲ့ Python file နာမည်နဲ့ တူရပါမယ်
