@@ -53,15 +53,20 @@ window.switchTab = function(tab) {
 };
 
 /**
- * ၃။ Player Scout Section (With Position Filters)
+ * ၃။ Player Scout Section (Fix: Removed Limit & Fixed Sort Logic)
  */
 async function loadPlayerData() {
     const container = document.getElementById('scout-container');
     container.innerHTML = `<div class="spinner"></div>`;
-    const snapshot = await db.collection("scout_players").orderBy("total_points", "desc").limit(100).get();
+    
+    // 🔥 Limit(100) ကို ဖြုတ်လိုက်တဲ့အတွက် Player အားလုံးကို ဆွဲထုတ်ပါမယ်
+    const snapshot = await db.collection("scout_players").orderBy("total_points", "desc").get();
+    
     let players = [];
     snapshot.forEach(doc => players.push({id: doc.id, ...doc.data()}));
+    
     window.allPlayers = players;
+    window.currentFilteredPlayers = players; // လက်ရှိ filter မိနေတဲ့ list ကို မှတ်ထားရန်
 
     container.innerHTML = `
         <div class="pos-filter-container">
@@ -89,8 +94,19 @@ async function loadPlayerData() {
 window.filterByPos = (pos, btn) => {
     document.querySelectorAll('.pos-filter-btn').forEach(b => b.classList.remove('active'));
     btn.classList.add('active');
-    const filtered = pos === 'ALL' ? window.allPlayers : window.allPlayers.filter(p => p.pos === pos);
-    displayPlayerRows(filtered);
+    
+    // 🔥 Filter လုပ်ထားတဲ့ list ကို window variable မှာ သိမ်းထားမှ Sort နှိပ်ရင် မပျောက်မှာပါ
+    window.currentFilteredPlayers = pos === 'ALL' ? window.allPlayers : window.allPlayers.filter(p => p.pos === pos);
+    displayPlayerRows(window.currentFilteredPlayers);
+};
+
+window.reSortP = (t) => {
+    // 🔥 အားလုံးကို sort မလုပ်ဘဲ လက်ရှိ filter မိနေတဲ့သူတွေကိုပဲ sort စီပါမယ်
+    let sorted = [...window.currentFilteredPlayers];
+    if (t === 'gw') sorted.sort((a,b) => (b.gw_points || 0) - (a.gw_points || 0));
+    else if (t === 'tot') sorted.sort((a,b) => b.total_points - a.total_points);
+    else if (t === 'own') sorted.sort((a,b) => parseFloat(b.ownership || 0) - parseFloat(a.ownership || 0));
+    displayPlayerRows(sorted);
 };
 
 function displayPlayerRows(data) {
@@ -107,14 +123,6 @@ function displayPlayerRows(data) {
         </tr>
     `).join('');
 }
-
-window.reSortP = (t) => {
-    let sorted = [...window.allPlayers];
-    if (t === 'gw') sorted.sort((a,b) => (b.gw_points || 0) - (a.gw_points || 0));
-    else if (t === 'tot') sorted.sort((a,b) => b.total_points - a.total_points);
-    else if (t === 'own') sorted.sort((a,b) => parseFloat(b.ownership || 0) - parseFloat(a.ownership || 0));
-    displayPlayerRows(sorted);
-};
 
 window.showPDetail = (id) => {
     const p = window.allPlayers.find(x => x.id === id);
