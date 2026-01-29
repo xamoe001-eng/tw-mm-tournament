@@ -36,7 +36,6 @@ window.loadFixtures = function(type) {
 
     content.innerHTML = `<div style="text-align:center; padding:50px; color:#555;">⌛ Fetching Real-time Data...</div>`;
 
-    // Fixtures နှင့် Live Points များကို ချိတ်ဆက်ခြင်း
     db.collection("fixtures")
       .where("type", "==", type)
       .onSnapshot((fixturesSnapshot) => {
@@ -44,7 +43,6 @@ window.loadFixtures = function(type) {
         db.collection("tw_mm_tournament").onSnapshot((rankSnapshot) => {
             let liveScores = {};
             rankSnapshot.forEach(doc => { 
-                // Python sync_tournament တွင် သုံးထားသော gw_live_points ကို ဖတ်သည်
                 liveScores[doc.id] = doc.data().gw_live_points || 0; 
             });
 
@@ -57,7 +55,6 @@ window.loadFixtures = function(type) {
                             ${isLeague ? 'H2H League Season' : 'TW FA Cup Tournament'}
                         </h2>`;
 
-            // Gameweek အလိုက် စီခြင်း
             const sortedDocs = fixturesSnapshot.docs.sort((a, b) => a.data().gameweek - b.data().gameweek);
 
             sortedDocs.forEach(doc => {
@@ -65,7 +62,6 @@ window.loadFixtures = function(type) {
                 const isCompleted = f.status === "completed";
                 const isLive = f.status === "live";
 
-                // အမှတ်များကို သတ်မှတ်ခြင်း (Completed ဆိုလျှင် Fixture ထဲမှယူ၊ Live ဆိုလျှင် Tournament ထဲမှယူ)
                 const hPts = isCompleted ? (f.home.points || 0) : (liveScores[f.home.id] || 0);
                 const aPts = isCompleted ? (f.away.points || 0) : (liveScores[f.away.id] || 0);
 
@@ -91,15 +87,15 @@ window.loadFixtures = function(type) {
 
                         <div style="display:flex; align-items:center; justify-content:space-between; gap:10px;">
                             <div style="flex:1; display:flex; flex-direction:column; align-items:center; min-width:0;">
-                                <div style="font-size:0.85rem; font-weight:800; color:${hWin ? '#00ff88' : '#fff'}; text-align:center; overflow:hidden; text-overflow:ellipsis; width:100%; white-space:nowrap; margin-bottom:4px;">
+                                <div style="font-size:0.85rem; font-weight:800; color:${hWin ? '#00ff88' : '#fff'}; text-align:center; word-break: break-word; line-height: 1.2; margin-bottom:6px;">
                                     ${f.home.team || 'Team'}
                                 </div>
-                                <div style="font-size:0.6rem; color:#555; overflow:hidden; text-overflow:ellipsis; width:100%; text-align:center; white-space:nowrap;">
+                                <div style="font-size:0.6rem; color:#555; text-align:center; word-break: break-word; opacity: 0.8;">
                                     ${f.home.name}
                                 </div>
                             </div>
 
-                            <div style="display:grid; grid-template-columns: 1fr auto 1fr; align-items:center; background:#000; padding:10px 14px; border-radius:12px; border:1px solid #222; min-width:85px;">
+                            <div style="display:grid; grid-template-columns: 1fr auto 1fr; align-items:center; background:#000; padding:10px 14px; border-radius:12px; border:1px solid #222; min-width:85px; height: fit-content;">
                                 <div style="font-size:1.3rem; font-weight:900; text-align:right; color:${hWin ? '#00ff88' : '#fff'};">
                                     ${f.status === 'upcoming' ? '-' : hPts}
                                 </div>
@@ -110,10 +106,10 @@ window.loadFixtures = function(type) {
                             </div>
 
                             <div style="flex:1; display:flex; flex-direction:column; align-items:center; min-width:0;">
-                                <div style="font-size:0.85rem; font-weight:800; color:${aWin ? '#00ff88' : '#fff'}; text-align:center; overflow:hidden; text-overflow:ellipsis; width:100%; white-space:nowrap; margin-bottom:4px;">
+                                <div style="font-size:0.85rem; font-weight:800; color:${aWin ? '#00ff88' : '#fff'}; text-align:center; word-break: break-word; line-height: 1.2; margin-bottom:6px;">
                                     ${f.away.team || 'Team'}
                                 </div>
-                                <div style="font-size:0.6rem; color:#555; overflow:hidden; text-overflow:ellipsis; width:100%; text-align:center; white-space:nowrap;">
+                                <div style="font-size:0.6rem; color:#555; text-align:center; word-break: break-word; opacity: 0.8;">
                                     ${f.away.name}
                                 </div>
                             </div>
@@ -122,7 +118,7 @@ window.loadFixtures = function(type) {
                 `;
             });
             content.innerHTML = html;
-      
+       
         });
     });
 };
