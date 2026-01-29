@@ -35,14 +35,12 @@ def get_net_points(entry_id, gw_num):
         
         active_chip = res.get('active_chip')
         
-        # Triple Captain Logic
         if active_chip == '3xc':
             cap_id = next(p for p in res['picks'] if p['is_captain'])['element']
             p_res = requests.get(f"{FPL_API}element-summary/{cap_id}/").json()
             cap_pts = next(e['event_points'] for e in p_res['history'] if e['event'] == gw_num)
             net_points -= cap_pts
             
-        # Bench Boost Logic
         elif active_chip == 'bboost':
             bench_ids = [p['element'] for p in res['picks'][11:]]
             for b_id in bench_ids:
@@ -55,7 +53,7 @@ def get_net_points(entry_id, gw_num):
         return 0
 
 def sync_tournament():
-    print(f"--- 🔄 Starting Clean Sync for GW {CURRENT_GW} ---")
+    print(f"--- 🔄 Starting Overwrite Sync for GW {CURRENT_GW} ---")
     
     try:
         r = requests.get(f"{FPL_API}leagues-classic/{LEAGUE_ID}/standings/").json()
@@ -64,12 +62,11 @@ def sync_tournament():
         print(f"Error fetching standings: {e}")
         return
 
-    # Fixtures အကုန်ဆွဲယူခြင်း (League + FA Cup)
     f_ref = db.collection("fixtures").where("gameweek", "==", CURRENT_GW).stream()
     fixtures_list = [f.to_dict() | {'doc_id': f.id} for f in f_ref]
     
     manager_scores = {}
-    print("Fetching player points (Applying Chips/Transfers Rules)...")
+    print("Fetching player points (Chips & Transfers Logic Applied)...")
     for index, manager in enumerate(top_48):
         entry_id = str(manager['entry'])
         net_pts = get_net_points(entry_id, CURRENT_GW)
@@ -83,22 +80,20 @@ def sync_tournament():
     batch = db.batch()
     h2h_results = {}
 
-    # ၁။ Fixtures မှာ အမှတ်သွင်းခြင်း (League + FA Cup နှစ်မျိုးလုံးအတွက်)
+    # ၁။ Fixtures မှာ အမှတ်သွင်းခြင်း
     for f in fixtures_list:
         fid = f['doc_id']
         h_id, a_id = str(f['home']['id']), str(f['away']['id'])
         h_pts = manager_scores.get(h_id, {'pts': 0})['pts']
         a_pts = manager_scores.get(a_id, {'pts': 0})['pts']
 
-        # Fixture Document Update
         batch.update(db.collection("fixtures").document(fid), {
             "home.points": h_pts,
             "away.points": a_pts,
             "status": "completed"
         })
 
-        # 🔥 H2H Standing အတွက် Logic (League ပွဲစဉ်ဖြစ်မှသာ တွက်ချက်မည်)
-        # အဆင့် (၁၊ ၂) 4 PTS ဖြစ်နေတာကို ဖြေရှင်းရန်ဖြစ်သည်
+        # H2H Standing Logic (League ပွဲစဉ်သီးသန့်)
         if f.get('type') == 'league':
             if h_id not in h2h_results: h2h_results[h_id] = {'w':0, 'd':0, 'l':0}
             if a_id not in h2h_results: h2h_results[a_id] = {'w':0, 'd':0, 'l':0}
@@ -110,8 +105,9 @@ def sync_tournament():
             else:
                 h2h_results[h_id]['d'] = 1; h2h_results[a_id]['d'] = 1
 
-    # ၂။ Tournament Standings Table Update (Full Overwrite)
+    # ၂။ Tournament Standings & Unified History Update
     for entry_id, data in manager_scores.items():
+        # Standing Table
         doc_ref = db.collection("tw_mm_tournament").document(entry_id)
         div = "Division A" if data['index'] < 24 else "Division B"
         res = h2h_results.get(entry_id, {'w':0, 'd':0, 'l':0})
@@ -132,17 +128,22 @@ def sync_tournament():
             "last_updated": firestore.SERVER_TIMESTAMP
         })
 
-        # Fixture History Collection (Website မှာ တစ်ပတ်ချင်း ပြန်ကြည့်ရန်)
-        hist_ref = db.collection(f"fixtures_history_gw_{CURRENT_GW}").document(entry_id)
+        # 🔥 Unified Fixture History (Collection တစ်ခုတည်းမှာပဲ သိမ်းဆည်းခြင်း)
+        # ID ကို EntryID_GW နံပါတ် နဲ့ ပေးထားလို့ Data မထပ်အောင် ကာကွယ်ပေးပါတယ်
+        history_id = f"{entry_id}_GW{CURRENT_GW}"
+        hist_ref = db.collection("fixtures_history").document(history_id)
         batch.set(hist_ref, {
             "entry_id": entry_id, 
-            "gw": CURRENT_GW, 
+            "gameweek": CURRENT_GW, 
             "points": data['pts'],
-            "manager_name": data['name']
+            "manager_name": data['name'],
+            "team_name": data['team'],
+            "division": div,
+            "last_updated": firestore.SERVER_TIMESTAMP
         })
 
     batch.commit()
-    print(f"✅ GW {CURRENT_GW} Sync Completed. League and FA Cup points updated.")
+    print(f"✅ GW {CURRENT_GW} Clean Sync Completed. Unified History Updated.")
 
 if __name__ == "__main__":
     sync_tournament()
