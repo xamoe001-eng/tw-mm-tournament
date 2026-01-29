@@ -4,66 +4,57 @@ import os
 import json
 import random
 
-def initialize_firebase():
-    if not firebase_admin._apps:
-        service_account_info = os.environ.get('FIREBASE_SERVICE_ACCOUNT')
-        if service_account_info:
-            cred = credentials.Certificate(json.loads(service_account_info))
-            firebase_admin.initialize_app(cred)
-        else:
-            firebase_admin.initialize_app(credentials.Certificate('serviceAccountKey.json'))
-    return firestore.client()
-
-db = initialize_firebase()
-
-# ⚠️ အပတ်စဉ် နှိပ်ခါနီးတိုင်း ပြီးသွားတဲ့အပတ် (PAST) နဲ့ ထုတ်မယ့်အပတ် (NEXT) ကို ပြင်ပေးပါ
-PAST_GW = 26    # ဥပမာ - GW 26 ပြီးသွားချိန်
-NEXT_GW = 27    # GW 27 (Semi-Final) ထွက်လာမည်
+# ... (initialize_firebase logic အဟောင်းအတိုင်းထားပါ) ...
 
 def generate_fa_fixtures():
+    # ၁။ အချက်အလက်ဆွဲယူမည့် Collection ကို သေချာသတ်မှတ်ပါ
+    # အမှတ်သွင်းတုန်းက fixtures ထဲမှာပဲ သိမ်းခဲ့ရင် fixtures ကိုပဲ သုံးရပါမယ်
+    source_collection = "fixtures" 
+    
     print(f"🏆 FA Cup Manager: Generating GW {NEXT_GW} based on GW {PAST_GW} results...")
     
     winners = []
     losers = []
     
-    # ၁။ အရင်အပတ်က FA Cup ရလဒ်များကို History မှ ဆွဲထုတ်ခြင်း
-    history_ref = db.collection("fixtures_history_fa").where("gameweek", "==", PAST_GW).stream()
+    # PAST_GW က FA Cup ပွဲစဉ်တွေကိုပဲ ဆွဲထုတ်မယ်
+    query = db.collection(source_collection)\
+              .where("gameweek", "==", PAST_GW)\
+              .where("type", "==", "fa_cup")\
+              .stream()
     
-    for doc in history_ref:
+    for doc in query:
         f = doc.to_dict()
+        # Nested Object (home.points) ဖြစ်တဲ့အတွက် data structure ကို ဂရုစိုက်ပါ
         h = f['home']
         a = f['away']
         
-        # နိုင်သူ/ရှုံးသူ ခွဲခြားခြင်း
-        if h.get('points', 0) > a.get('points', 0):
+        h_pts = h.get('points', 0)
+        a_pts = a.get('points', 0)
+        
+        if h_pts > a_pts:
             winners.append(h)
             losers.append(a)
-        elif a.get('points', 0) > h.get('points', 0):
+        elif a_pts > h_pts:
             winners.append(a)
             losers.append(h)
         else:
-            # အမှတ်တူနေလျှင် ကျပန်းရွေးပြီး ကျန်သူကို Loser ထဲထည့်မည်
             lucky, unlucky = random.sample([h, a], 2)
             winners.append(lucky)
             losers.append(unlucky)
 
     if not winners:
-        print("❌ No data found in history. Sync the GW first!")
+        print(f"❌ GW {PAST_GW} အတွက် FA Cup data မတွေ့ပါ။ Sync အရင်လုပ်ထားသလား စစ်ပေးပါ။")
         return
 
-    # ၂။ Lucky Loser Logic: GW 26 မှာ အသင်း ၃ သင်းပဲ နိုင်တဲ့အခါ ၄ သင်းပြည့်အောင် ၁ သင်း ပြန်ခေါ်မည်
+    # ၂။ Lucky Loser Logic (GW 26 ဖြစ်ခဲ့လျှင်)
     if PAST_GW == 26 and len(winners) == 3:
-        print("🎯 Selecting Lucky Loser from GW 26 Losers...")
-        # ရှုံးတဲ့သူ ၃ ယောက်ထဲက အမှတ်အများဆုံး (Highest Points) ကို ယူမည်
-        # အမှတ်တူနေလျှင် ပထမဆုံးတစ်ယောက်ကို ယူမည်
+        # Losers ထဲက အမှတ်အများဆုံးလူကို ရှာမယ်
         lucky_loser = max(losers, key=lambda x: x.get('points', 0))
-        print(f"🔥 Lucky Loser: {lucky_loser['name']} ({lucky_loser.get('points', 0)} pts)")
+        print(f"🔥 Lucky Loser Found: {lucky_loser['name']} with {lucky_loser.get('points', 0)} pts")
         winners.append(lucky_loser)
 
-    # ၃။ တွဲဆိုင်းအသစ်များ ထုတ်ပြန်ခြင်း
-    print(f"✨ Total Teams for GW {NEXT_GW}: {len(winners)}")
+    # ၃။ တွဲဆိုင်းအသစ်ထုတ်ခြင်း (Shuffle winners for random draw)
     random.shuffle(winners)
-    
     batch = db.batch()
     match_count = 1
     
@@ -84,21 +75,5 @@ def generate_fa_fixtures():
         })
         match_count += 1
 
-    # ၄။ တစ်သင်းကျန်နေသေးလျှင် (Bye Logic - GW 26 မဟုတ်တဲ့အပတ်များအတွက်)
-    if len(winners) == 1:
-        bye_player = winners[0]
-        print(f"🎁 BYE: {bye_player['name']} automatically through to GW {NEXT_GW + 1}")
-        # Bye ရသူကို History ထဲ နိုင်သူအဖြစ် ကြိုထည့်ထားမည်
-        db.collection("fixtures_history_fa").document(f"FA_GW{NEXT_GW}_BYE").set({
-            "gameweek": NEXT_GW,
-            "type": "fa_cup",
-            "home": {**bye_player, "points": 1},
-            "away": {"id": "BYE", "name": "No Opponent", "points": 0},
-            "status": "completed"
-        })
-
     batch.commit()
-    print(f"✅ GW {NEXT_GW} Fixtures Successfully Generated!")
-
-if __name__ == "__main__":
-    generate_fa_fixtures()
+    print(f"✅ GW {NEXT_GW} FA Cup Fixtures Created!")
