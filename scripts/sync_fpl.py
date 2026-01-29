@@ -21,7 +21,7 @@ db = initialize_firebase()
 
 LEAGUE_ID = "400231"
 FPL_API = "https://fantasy.premierleague.com/api/"
-CURRENT_GW = 23  # ၂၄ လို့ပြောင်းမှ အမှတ်တွေ စုပေါင်းစာရင်းပိတ်မှာပါ
+CURRENT_GW = 23  # ၂၄ လို့ပြောင်းမှ အမှတ်တွေပေါင်းပြီး Status က 'completed' ဖြစ်မှာပါ
 
 def get_net_points(entry_id, gw_num):
     try:
@@ -30,24 +30,11 @@ def get_net_points(entry_id, gw_num):
         raw_points = res['entry_history']['points']
         transfer_cost = res['entry_history']['event_transfers_cost']
         net_points = raw_points - transfer_cost
-        active_chip = res.get('active_chip')
-        
-        if active_chip == '3xc':
-            cap_id = next(p for p in res['picks'] if p['is_captain'])['element']
-            p_res = requests.get(f"{FPL_API}element-summary/{cap_id}/").json()
-            cap_pts = next(e['event_points'] for e in p_res['history'] if e['event'] == gw_num)
-            net_points -= cap_pts
-        elif active_chip == 'bboost':
-            bench_ids = [p['element'] for p in res['picks'][11:]]
-            for b_id in bench_ids:
-                b_res = requests.get(f"{FPL_API}element-summary/{b_id}/").json()
-                b_pts = next(e['event_points'] for e in b_res['history'] if e['event'] == gw_num)
-                net_points -= b_pts
         return net_points
     except: return 0
 
 def sync_tournament():
-    print(f"--- 🔄 Starting Sync for Gameweek {CURRENT_GW} ---")
+    print(f"--- 🔄 Starting Sync for GW {CURRENT_GW} ---")
     
     try:
         r = requests.get(f"{FPL_API}leagues-classic/{LEAGUE_ID}/standings/").json()
@@ -55,6 +42,7 @@ def sync_tournament():
     except Exception as e:
         print(f"Error: {e}"); return
 
+    # Firestore ထဲက တွဲဆိုင်းတွေကို အရင်ယူမယ်
     f_ref = db.collection("fixtures").where("gameweek", "==", CURRENT_GW).stream()
     fixtures_list = [f.to_dict() | {'doc_id': f.id} for f in f_ref]
     
@@ -68,18 +56,34 @@ def sync_tournament():
             "initial_index": index
         }
 
+    # 🔥 အရေးကြီးဆုံးအပိုင်း- Standings ထဲက last_synced_gw ကို အရင်စစ်မယ်
+    # တစ်ယောက်ယောက်ရဲ့ record ကို စစ်လိုက်ရုံနဲ့ အပတ်သစ် ဟုတ်မဟုတ် သိနိုင်ပါတယ်
+    some_entry_id = str(top_48[0]['entry'])
+    some_doc = db.collection("tw_mm_tournament").document(some_entry_id).get()
+    
+    last_gw = 0
+    if some_doc.exists:
+        last_gw = some_doc.to_dict().get('last_synced_gw', 0)
+
+    # ၂၄ ပြောင်းထားရင် should_finalize က True ဖြစ်မယ်
+    should_finalize = (CURRENT_GW > last_gw)
+    
+    # Status သတ်မှတ်ချက်- ပတ်လမ်းမပြောင်းသေးရင် "live"၊ ပြောင်းသွားရင် "completed"
+    current_status = "completed" if should_finalize else "live"
+
     h2h_results = {}
-    # ၁။ Fixtures အမှတ်များကို Update လုပ်ပြီး Status ကို Completed ပြောင်းခြင်း
+    # ၁။ Fixtures အမှတ်များကို Update လုပ်ခြင်း
     for f in fixtures_list:
         fid = f['doc_id']
         h_id, a_id = str(f['home']['id']), str(f['away']['id'])
         h_pts = manager_scores.get(h_id, {'pts': 0})['pts']
         a_pts = manager_scores.get(a_id, {'pts': 0})['pts']
 
+        # 🔥 Status ကို Manual ပြောင်းတဲ့အပေါ်မူတည်ပြီး Dynamic ဖြစ်အောင်လုပ်လိုက်ပါပြီ
         db.collection("fixtures").document(fid).update({
             "home.points": h_pts,
             "away.points": a_pts,
-            "status": "completed" 
+            "status": current_status 
         })
 
         if f.get('type') == 'league':
@@ -89,37 +93,30 @@ def sync_tournament():
             elif a_pts > h_pts: h2h_results[a_id]['w']=1; h2h_results[h_id]['l']=1
             else: h2h_results[h_id]['d']=1; h2h_results[a_id]['d']=1
 
-    # ၂။ Tournament Standings - Division ကို မရောစေဘဲ အမှတ်ပေါင်းခြင်း
+    # ၂။ Tournament Standings Update
     for entry_id, data in manager_scores.items():
         doc_ref = db.collection("tw_mm_tournament").document(entry_id)
         doc = doc_ref.get()
         res = h2h_results.get(entry_id, {'w':0, 'd':0, 'l':0})
         h2h_pts = (res['w'] * 3) + (res['d'] * 1)
 
-        # လက်ရှိ Firestore ထဲမှာ Division ရှိမရှိစစ်ဆေးခြင်း
         current_division = None
-        last_gw = 0
         if doc.exists:
-            doc_data = doc.to_dict()
-            current_division = doc_data.get('division')
-            last_gw = doc_data.get('last_synced_gw', 0)
-
-        # Division မရှိသေးရင် (GW 23 အတွက် ပထမဆုံးအကြိမ်) သတ်မှတ်ပေးခြင်း
+            current_division = doc.to_dict().get('division')
+        
         if not current_division:
             current_division = "Division A" if data['initial_index'] < 24 else "Division B"
-
-        should_increment = (CURRENT_GW > last_gw)
 
         update_data = {
             "manager_name": data['name'],
             "team_name": data['team'],
-            "division": current_division, # အဟောင်းရှိရင် အဟောင်းအတိုင်းပဲ ထားမည်
+            "division": current_division,
             "gw_live_points": data['pts'],
             "last_synced_gw": CURRENT_GW,
             "last_updated": firestore.SERVER_TIMESTAMP
         }
 
-        if should_increment:
+        if should_finalize:
             update_data.update({
                 "played": firestore.Increment(1),
                 "wins": firestore.Increment(res['w']),
@@ -128,12 +125,11 @@ def sync_tournament():
                 "h2h_points": firestore.Increment(h2h_pts),
                 "tournament_total_net_points": firestore.Increment(data['pts'])
             })
-            print(f"✅ Finalizing {current_division} score for {data['name']}")
 
         doc_ref.set(update_data, merge=True)
 
-    print(f"🏁 Sync Success for GW {CURRENT_GW}. Division separation maintained.")
+    print(f"🏁 Sync Success. Mode: {current_status.upper()}")
 
 if __name__ == "__main__":
-   
-  sync_tournament()
+    
+    sync_tournament()
