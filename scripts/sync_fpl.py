@@ -13,7 +13,7 @@ def initialize_firebase():
 
 db = initialize_firebase()
 FPL_API = "https://fantasy.premierleague.com/api/"
-CURRENT_GW = 24  # ⚠️ အပတ်စဉ် ပြောင်းပေးရန်
+CURRENT_GW = 23  # ⚠️ အပတ်စဉ် ပြောင်းပေးရန်
 
 def get_detailed_stats(entry_id, gw_num):
     """ Net Points နှင့် Tie-break အတွက် လိုအပ်သော stats များကိုယူသည် """
