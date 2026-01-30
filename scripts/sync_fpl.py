@@ -21,7 +21,7 @@ db = initialize_firebase()
 
 LEAGUE_ID = "400231"
 FPL_API = "https://fantasy.premierleague.com/api/"
-CURRENT_GW = 23  # ၂၄ လို့ပြောင်းမှ အမှတ်တွေပေါင်းပြီး Status က 'completed' ဖြစ်မှာပါ
+CURRENT_GW = 24  # ၂၄ လို့ပြောင်းမှ အမှတ်တွေပေါင်းပြီး Status က 'completed' ဖြစ်မှာပါ
 
 def get_player_stats(entry_id, gw_num):
     """ အမှတ်တူလျှင် ခွဲခြားရန် Captain, Vice, GK အမှတ်များကိုပါ ဆွဲထုတ်ခြင်း """
