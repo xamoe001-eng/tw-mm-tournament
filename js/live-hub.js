@@ -9,7 +9,7 @@ window.renderLiveHub = function() {
                     style="flex: 1; background:#D4AF37; color:black; border-radius: 50px; padding: 12px; font-weight:800; border:none; cursor:pointer; font-size: 0.75rem; transition: 0.3s;">
                     H2H LEAGUE
                 </button>
-                <button id="nav-fa" onclick="window.loadFixtures('fa_cup')" 
+                <button id="nav-fa" onclick="window.loadFixtures('FA_CUP')" 
                     style="flex: 1; background:#222; color:#888; border-radius: 50px; padding: 12px; font-weight:800; border:none; cursor:pointer; font-size: 0.75rem; transition: 0.3s;">
                     TW FA CUP
                 </button>
@@ -28,6 +28,7 @@ window.loadFixtures = function(type) {
     const navFA = document.getElementById('nav-fa');
     if (!content) return;
 
+    // FA Cup type ကို Python code နဲ့ ကိုက်အောင် 'FA_CUP' လို့ သုံးထားပါတယ်
     const isLeague = type === 'league';
     navLeague.style.background = isLeague ? '#D4AF37' : '#222';
     navLeague.style.color = isLeague ? '#000' : '#888';
@@ -36,10 +37,12 @@ window.loadFixtures = function(type) {
 
     content.innerHTML = `<div style="text-align:center; padding:50px; color:#555;">⌛ Fetching Real-time Data...</div>`;
 
+    // Fixtures များကို ဆွဲယူခြင်း
     db.collection("fixtures")
       .where("type", "==", type)
       .onSnapshot((fixturesSnapshot) => {
         
+        // Tournament Table မှ Live Points များကို ဆွဲယူခြင်း
         db.collection("tw_mm_tournament").onSnapshot((rankSnapshot) => {
             let liveScores = {};
             rankSnapshot.forEach(doc => { 
@@ -55,18 +58,24 @@ window.loadFixtures = function(type) {
                             ${isLeague ? 'H2H League Season' : 'TW FA Cup Tournament'}
                         </h2>`;
 
-            const sortedDocs = fixturesSnapshot.docs.sort((a, b) => a.data().gameweek - b.data().gameweek);
+            // Match ID အလိုက် စဉ်ရန် (Match_01, Match_02...)
+            const sortedDocs = fixturesSnapshot.docs.sort((a, b) => {
+                return a.id.localeCompare(b.id, undefined, {numeric: true, sensitivity: 'base'});
+            });
 
             sortedDocs.forEach(doc => {
                 const f = doc.data();
                 const isCompleted = f.status === "completed";
                 const isLive = f.status === "live";
 
-                const hPts = isCompleted ? (f.home.points || 0) : (liveScores[f.home.id] || 0);
-                const aPts = isCompleted ? (f.away.points || 0) : (liveScores[f.away.id] || 0);
+                // Live အမှတ်များ သို့မဟုတ် ပွဲပြီးအမှတ်များ ယူခြင်း
+                const hPts = (isLive || !isCompleted) ? (liveScores[f.home.id] || 0) : (f.home.points || 0);
+                const aPts = (isLive || !isCompleted) ? (liveScores[f.away.id] || 0) : (f.away.points || 0);
 
-                const hWin = hPts > aPts;
-                const aWin = aPts > hPts;
+                // နိုင်သူ/ရှုံးသူ အရောင်ပြရန် (Tie-break winner ပါ ထည့်သွင်းစဉ်းစားသည်)
+                const winnerId = f.tie_break_winner ? String(f.tie_break_winner) : null;
+                const hWin = winnerId ? (String(f.home.id) === winnerId) : (hPts > aPts);
+                const aWin = winnerId ? (String(f.away.id) === winnerId) : (aPts > hPts);
                 
                 let statusBadge = isCompleted 
                     ? `<span style="background:#222; color:#555; padding:2px 8px; border-radius:4px; font-size:0.55rem; font-weight:900;">FINAL</span>`
@@ -114,6 +123,7 @@ window.loadFixtures = function(type) {
                                 </div>
                             </div>
                         </div>
+                        ${f.tie_break_reason && isLive ? `<div style="text-align:center; font-size:0.55rem; color:#D4AF37; margin-top:10px; font-weight:bold;">${f.tie_break_reason}</div>` : ''}
                     </div>
                 `;
             });
