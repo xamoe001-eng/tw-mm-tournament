@@ -12,114 +12,107 @@ def initialize_firebase():
 
 db = initialize_firebase()
 FPL_API = "https://fantasy.premierleague.com/api/"
-
-# ⚠️ အပတ်စဉ် ပြောင်းပေးရန် (ဥပမာ- ၂၃ ပွဲကစားနေချိန် ၂၃ ထားပါ၊ ၂၃ ပြီးလို့ ၂၄ စရင် ၂၄ ပြောင်းပါ)
+LEAGUE_ID = "400231"
 CURRENT_GW = 23  
+START_GW = 23
+END_GW = 29
 
 def get_detailed_stats(entry_id, gw_num):
-    """ Net Points နှင့် Tie-break အတွက် လိုအပ်သော stats များကိုယူသည် """
+    """ Net Points နှင့် Tie-break အတွက် လိုအပ်သော stats များကို တစ်ခါတည်းယူသည် """
     try:
-        url = f"{FPL_API}entry/{entry_id}/event/{gw_num}/picks/"
-        res = requests.get(url, timeout=15).json()
-        
-        # Net Points = Total Points - Transfer Cost
+        # Picks info (Net points + Captain/GK IDs)
+        res = requests.get(f"{FPL_API}entry/{entry_id}/event/{gw_num}/picks/", timeout=10).json()
         net_pts = res['entry_history']['points'] - res['entry_history']['event_transfers_cost']
         
-        # Captain, Vice, GK ID များရှာခြင်း
         picks = res['picks']
         cap_id = next(p for p in picks if p['is_captain'])['element']
         vice_id = next(p for p in picks if p['is_vice_captain'])['element']
         gk_id = next(p for p in picks if p['position'] == 1)['element']
 
-        def fetch_pts(p_id):
-            p_res = requests.get(f"{FPL_API}element-summary/{p_id}/").json()
-            return next(e['event_points'] for e in p_res['history'] if e['event'] == gw_num)
+        # Live points info (Captain/GK/Vice points များကို fetch လုပ်ရန်)
+        live_res = requests.get(f"{FPL_API}event/{gw_num}/live/", timeout=10).json()
+        elements = {e['id']: e['stats']['total_points'] for e in live_res['elements']}
 
         return {
             "net_pts": net_pts,
-            "cap_pts": fetch_pts(cap_id),
-            "vice_pts": fetch_pts(vice_id),
-            "gk_pts": fetch_pts(gk_id)
+            "cap_pts": elements.get(cap_id, 0),
+            "vice_pts": elements.get(vice_id, 0),
+            "gk_pts": elements.get(gk_id, 0)
         }
     except Exception as e:
-        print(f"⚠️ Error fetching stats for {entry_id}: {e}")
-        return {"net_pts": 0, "cap_pts": 0, "vice_pts": 0, "gk_pts": 0}
+        print(f"⚠️ Skip {entry_id} (API delay): {e}")
+        return None
 
 def sync_fpl():
-    print(f"--- 🔄 Syncing GW {CURRENT_GW} (League & FA Cup) ---")
+    print(f"--- 🔄 GW {CURRENT_GW} Live Sync Started ---")
     
-    # ၁။ အပတ်ကူးမကူး စစ်ဆေးခြင်း
-    # (တကယ်လို့ လက်ရှိ GW က Database ထဲက နောက်ဆုံး Sync ထားတဲ့ GW ထက် ကြီးနေရင် finalize လုပ်မယ်)
-    sample_doc = db.collection("tw_mm_tournament").limit(1).get()[0].to_dict()
-    last_gw_in_db = sample_doc.get('last_synced_gw', 0)
-    
-    # အပတ်အသစ်ရောက်ပြီဆိုရင် Finalize လုပ်ဖို့ flag ထောင်မယ်
-    should_finalize = (CURRENT_GW > last_gw_in_db and last_gw_in_db != 0)
+    # ၁။ Division ခွဲခြားခြင်း (Data မရှိသေးလျှင် တစ်ကြိမ်သာလုပ်မည်)
+    tournament_ref = db.collection("tw_mm_tournament")
+    if len(tournament_ref.get()) == 0:
+        print("📊 Initializing Division A & B from Top 48...")
+        r = requests.get(f"{FPL_API}leagues-classic/{LEAGUE_ID}/standings/").json()
+        top_48 = r['standings']['results'][:48]
+        for index, m in enumerate(top_48):
+            div = "Division A" if index < 24 else "Division B"
+            tournament_ref.document(str(m['entry'])).set({
+                "id": str(m['entry']),
+                "name": m['player_name'],
+                "team": m['entry_name'],
+                "division": div,
+                "tournament_total_net_points": 0,
+                "gw_live_points": 0,
+                "last_synced_gw": START_GW - 1
+            })
 
-    # ၂။ FA Cup (fixtures collection) ကို Update လုပ်ခြင်း
+    # ၂။ FA Cup Fixtures Update (Live အမှတ်ပြရန်)
     fa_fixtures = db.collection("fixtures").where("gameweek", "==", CURRENT_GW).stream()
-    
     for f_doc in fa_fixtures:
         f = f_doc.to_dict()
-        h_id, a_id = str(f['home']['id']), str(f['away']['id'])
-        h_s = get_detailed_stats(h_id, CURRENT_GW)
-        a_s = get_detailed_stats(a_id, CURRENT_GW)
-        
-        # Winner ဆုံးဖြတ်ခြင်း Logic (Tie-break ပါဝင်သည်)
-        winner = None
-        if h_s['net_pts'] > a_s['net_pts']:
-            winner = h_id
-        elif a_s['net_pts'] > h_s['net_pts']:
-            winner = a_id
-        else: # Tie-break: Cap > VCap > GK
-            if h_s['cap_pts'] != a_s['cap_pts']:
-                winner = h_id if h_s['cap_pts'] > a_s['cap_pts'] else a_id
-            elif h_s['vice_pts'] != a_s['vice_pts']:
-                winner = h_id if h_s['vice_pts'] > a_s['vice_pts'] else a_id
-            else:
-                winner = h_id if h_s['gk_pts'] >= a_s['gk_pts'] else a_id
+        h_stats = get_detailed_stats(f['home']['id'], CURRENT_GW)
+        a_stats = get_detailed_stats(f['away']['id'], CURRENT_GW)
 
-        # Live Update လုပ်ခြင်း
-        db.collection("fixtures").document(f_doc.id).update({
-            "home.points": h_s['net_pts'],
-            "away.points": a_s['net_pts'],
-            "status": "live",
-            "tie_break_winner": winner,
-            "internal_tie_break": {
-                "home": {"cap": h_s['cap_pts'], "vice": h_s['vice_pts'], "gk": h_s['gk_pts']},
-                "away": {"cap": a_s['cap_pts'], "vice": a_s['vice_pts'], "gk": a_s['gk_pts']}
-            }
-        })
+        if h_stats and a_stats:
+            # Winner Logic
+            winner = None
+            if h_stats['net_pts'] > a_stats['net_pts']: winner = f['home']['id']
+            elif a_stats['net_pts'] > h_stats['net_pts']: winner = f['away']['id']
+            else: # Tie-break
+                if h_stats['cap_pts'] != a_stats['cap_pts']: winner = f['home']['id'] if h_stats['cap_pts'] > a_stats['cap_pts'] else f['away']['id']
+                elif h_stats['vice_pts'] != a_stats['vice_pts']: winner = f['home']['id'] if h_stats['vice_pts'] > a_stats['vice_pts'] else f['away']['id']
+                else: winner = f['home']['id'] if h_stats['gk_pts'] >= a_stats['gk_pts'] else f['away']['id']
 
-    # ၃။ League Table (tw_mm_tournament) ကို Update လုပ်ခြင်း
-    managers = db.collection("tw_mm_tournament").stream()
-    for m in managers:
-        s = get_detailed_stats(m.id, CURRENT_GW)
-        
-        # အပတ်ကူးသွားပြီဆိုရင် အမှတ်ဟောင်းကို အရင်ပေါင်းမယ်
-        if should_finalize:
-            # အရင်အပတ် (last_gw_in_db) ရဲ့ stats ကို ပြန်ယူပြီး total ထဲပေါင်းထည့်
-            old_stats = get_detailed_stats(m.id, last_gw_in_db)
-            db.collection("tw_mm_tournament").document(m.id).update({
-                "tournament_total_net_points": firestore.Increment(old_stats['net_pts'])
+            db.collection("fixtures").document(f_doc.id).update({
+                "home.points": h_stats['net_pts'],
+                "away.points": a_stats['net_pts'],
+                "status": "live",
+                "tie_break_winner": winner
             })
-            
-            # အရင်အပတ်က FA ပွဲစဉ်တွေကို status: completed ပြောင်းသည်
-            old_fixtures = db.collection("fixtures").where("gameweek", "==", last_gw_in_db).stream()
-            for old_f in old_fixtures:
-                db.collection("fixtures").document(old_f.id).update({"status": "completed"})
 
-        # လက်ရှိ GW အတွက် live အမှတ်ကို update လုပ်မယ်
-        db.collection("tw_mm_tournament").document(m.id).update({
-            "gw_live_points": s['net_pts'],
-            "last_synced_gw": CURRENT_GW
-        })
+    # ၃။ League Table (Points Accumulation)
+    managers = tournament_ref.stream()
+    for m in managers:
+        m_data = m.to_dict()
+        s = get_detailed_stats(m.id, CURRENT_GW)
+        if not s: continue
 
-    if should_finalize:
-        print(f"✅ GW {last_gw_in_db} finalized and points added to total.")
-    
+        update_payload = {"gw_live_points": s['net_pts']}
+
+        # အပတ်ကူးသွားပါက (ဥပမာ GW 24 ရောက်လျှင် GW 23 အမှတ်ကို Total ထဲပေါင်းထည့်မည်)
+        if CURRENT_GW > m_data['last_synced_gw'] and m_data['last_synced_gw'] >= START_GW:
+            # အရင်အပတ်ရဲ့ Final Net Point ကို ယူရန်
+            old_s = get_detailed_stats(m.id, m_data['last_synced_gw'])
+            if old_s:
+                update_payload["tournament_total_net_points"] = firestore.Increment(old_s['net_pts'])
+                # GW 24 ရောက်မှ GW 23 Fixture များကို complete လုပ်ခြင်း
+                old_fixtures = db.collection("fixtures").where("gameweek", "==", m_data['last_synced_gw']).stream()
+                for old_f in old_fixtures:
+                    db.collection("fixtures").document(old_f.id).update({"status": "completed"})
+
+        update_payload["last_synced_gw"] = CURRENT_GW
+        tournament_ref.document(m.id).update(update_payload)
+
     print(f"🏁 GW {CURRENT_GW} Sync Success!")
 
 if __name__ == "__main__":
-  
+
     sync_fpl()
