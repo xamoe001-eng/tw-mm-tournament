@@ -15,20 +15,19 @@ def initialize_firebase():
 
 db = initialize_firebase()
 
-# ⚠️ အပတ်စဉ်အလိုက် ပြောင်းလဲသတ်မှတ်ရန်
-PREVIOUS_GW = 26
-NEXT_GW = 27
+# ⚠️ GW 23 အပြီး winners များကိုယူ၍ GW 24 ပွဲစဉ်သစ်များ ထုတ်ပြန်မည်
+PREVIOUS_GW = 23
+NEXT_GW = 24
 
 def generate_next_round():
-    print(f"🏆 GW {PREVIOUS_GW} ရလဒ်များကို စစ်ဆေး၍ GW {NEXT_GW} ပွဲစဉ်များ ထုတ်ပြန်နေသည်...")
+    print(f"🏆 GW {PREVIOUS_GW} Winners များကို စစ်ဆေး၍ GW {NEXT_GW} ပွဲစဉ်များ ထုတ်ပြန်နေသည်...")
     
-    # ၁။ အရင်အပတ်က FA Cup ပွဲစဉ်များကို ဆွဲယူခြင်း
+    # ၁။ အရင်အပတ် (GW 23) က FA Cup ပွဲစဉ်များကို ဆွဲယူခြင်း
     fa_ref = db.collection("fixtures") \
                .where("gameweek", "==", PREVIOUS_GW) \
                .where("type", "==", "FA_CUP").stream()
     
     winners = []
-    losers = []
     match_found = False
 
     for doc in fa_ref:
@@ -36,46 +35,38 @@ def generate_next_round():
         f = doc.to_dict()
         winner_id = str(f.get("tie_break_winner"))
         
-        # Player data များကို Points ပါဝင်အောင် စုစည်းခြင်း
-        home_player = {**f['home'], "points": f['home'].get('points', 0)}
-        away_player = {**f['away'], "points": f['away'].get('points', 0)}
+        # Winner ID မရှိသေးလျှင် (Sync မလုပ်ရသေးလျှင်) ကျော်သွားမည်
+        if not winner_id or winner_id == "None":
+            print(f"⚠️ သတိပေးချက်: Match {f.get('match_id')} တွင် Winner မသတ်မှတ်ရသေးပါ။ Sync အရင်လုပ်ပါ။")
+            continue
 
-        # Winner နှင့် Loser ခွဲခြားခြင်း (Sync Code က ဆုံးဖြတ်ထားသော winner_id ကို သုံးသည်)
+        # Winner data ကို ဆွဲထုတ်ခြင်း
         if str(f['home']['id']) == winner_id:
-            winners.append(home_player)
-            losers.append(away_player)
+            winners.append(f['home'])
         else:
-            winners.append(away_player)
-            losers.append(home_player)
+            winners.append(f['away'])
 
-    if not match_found:
-        print(f"❌ GW {PREVIOUS_GW} အတွက် ပွဲစဉ်များ ရှာမတွေ့ပါ။ Sync အရင်လုပ်ရန် လိုအပ်သည်။")
+    if not match_found or len(winners) == 0:
+        print(f"❌ GW {PREVIOUS_GW} အတွက် ပွဲစဉ်များ သို့မဟုတ် Winners များ ရှာမတွေ့ပါ။")
         return
 
-    # ၂။ Lucky Loser Logic (GW 26 မှ GW 27 အတွက်သာ)
+    # ၂။ GW 24 အတွက် (၂၄ ယောက် - ၁၂ ပွဲ) - Lucky Loser မလိုအပ်သေးပါ
     final_players = winners.copy()
-    if PREVIOUS_GW == 26 and len(losers) > 0:
-        # ရှုံးတဲ့သူတွေထဲက Net Points အများဆုံး တစ်ယောက်ကို ရွေးသည်
-        lucky_loser = sorted(losers, key=lambda x: x.get('points', 0), reverse=True)[0]
-        final_players.append(lucky_loser)
-        print(f"✨ Lucky Loser ရွေးချယ်မှု: {lucky_loser['name']} ({lucky_loser['points']} pts)")
-
-    print(f"✅ စုစုပေါင်း ကစားသမား {len(final_players)} ဦးဖြင့် တွဲဆိုင်းအသစ်များ ပြုလုပ်နေသည်...")
-
-    if len(final_players) < 2:
-        print("❌ လူဦးရေ မလုံလောက်သည့်အတွက် ပွဲစဉ်ထုတ်၍ မရပါ။"); return
+    
+    print(f"✅ စုစုပေါင်း ကစားသမား {len(final_players)} ဦးဖြင့် GW {NEXT_GW} တွဲဆိုင်းအသစ်များ ပြုလုပ်နေသည်...")
 
     # ၃။ Random Shuffle ဖြင့် ပွဲစဉ်အသစ် တွဲခြင်း
     random.shuffle(final_players)
     batch = db.batch()
     
+    # ၂ ယောက် တစ်တွဲ တွဲမည်
     for i in range(0, len(final_players), 2):
         if i + 1 < len(final_players):
             h, a = final_players[i], final_players[i+1]
             match_no = (i // 2) + 1
             doc_id = f"FA_GW{NEXT_GW}_Match_{match_no:02d}"
             
-            # Website ပေါ်တွင် Live အမှတ်နှင့် Tie-break ပြသရန် Structure အပြည့်အစုံ
+            # Website Structure အတိုင်း Fixture အသစ် သတ်မှတ်ခြင်း
             batch.set(db.collection("fixtures").document(doc_id), {
                 "gameweek": NEXT_GW,
                 "type": "FA_CUP",
@@ -103,7 +94,7 @@ def generate_next_round():
             })
             
     batch.commit()
-    print(f"🎉 Success: GW {NEXT_GW} (Semi-Final) ပွဲစဉ် ၂ ခုကို Firebase ထဲသို့ ထည့်သွင်းပြီးပါပြီ။")
+    print(f"🎉 Success: GW {NEXT_GW} အတွက် ပွဲစဉ်သစ် {len(final_players)//2} ပွဲကို Firebase ထဲသို့ ထည့်သွင်းပြီးပါပြီ။")
 
 if __name__ == "__main__":
     generate_next_round()
