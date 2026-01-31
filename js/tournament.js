@@ -19,7 +19,7 @@ window.renderLeagues = function() {
             </div>
             
             <div style="background: rgba(255,255,255,0.03); border: 1px dashed #333; border-radius: 10px; padding: 10px; margin-bottom: 15px; text-align: center;">
-                <div style="font-size: 0.6rem; color: #888; text-transform: uppercase; letter-spacing: 1px;">Live League Standings (Week Points Based)</div>
+                <div style="font-size: 0.6rem; color: #888; text-transform: uppercase; letter-spacing: 1px;">Live League Standings (Weekly Points Ranking)</div>
             </div>
 
             <div id="league-content">
@@ -32,7 +32,7 @@ window.renderLeagues = function() {
 };
 
 /**
- * ၂။ Division အလိုက် ဒေတာဆွဲထုတ်ခြင်း
+ * ၂။ Division အလိုက် ဒေတာဆွဲထုတ်ခြင်း (Sorting logic ပါဝင်သည်)
  */
 window.filterDivision = function(divName) {
     const content = document.getElementById('league-content');
@@ -48,7 +48,7 @@ window.filterDivision = function(divName) {
     btnB.style.background = !isDivA ? '#C0C0C0' : 'transparent';
     btnB.style.color = !isDivA ? '#000' : '#666';
 
-    content.innerHTML = `<div style="text-align:center; padding:50px; color:#555;">⌛ Fetching Live Data...</div>`;
+    content.innerHTML = `<div style="text-align:center; padding:50px; color:#555;">⌛ Fetching Data...</div>`;
 
     db.collection("tw_mm_tournament")
       .where("division", "==", divName)
@@ -63,22 +63,13 @@ window.filterDivision = function(divName) {
             players.push(doc.data());
         });
 
-        /**
-         * Sorting Logic: 
-         * ၁။ လက်ရှိအပတ်အမှတ် (gw_live_points) အရင်စီ
-         * ၂။ တူညီနေပါက စုစုပေါင်းအမှတ် (tournament_total_net_points) ဖြင့် ထပ်စီ
-         */
-        players.sort((a, b) => {
-            if ((b.gw_live_points || 0) !== (a.gw_live_points || 0)) {
-                return (b.gw_live_points || 0) - (a.gw_live_points || 0);
-            }
-            return (b.tournament_total_net_points || 0) - (a.tournament_total_net_points || 0);
-        });
+        // 🔥 အဓိကပြင်ဆင်ချက်- Week Point (gw_live_points) အများဆုံးလူကို ထိပ်ဆုံးကထား၍ စီမည်
+        players.sort((a, b) => (b.gw_live_points || 0) - (a.gw_live_points || 0));
 
         let html = `
             <div style="display: flex; justify-content: space-between; padding: 0 10px 10px; font-size: 0.6rem; color: #444; font-weight: 800; text-transform: uppercase;">
-                <span>POS / TEAM NAME</span>
-                <span>WEEK POINTS / TOTAL</span>
+                <span>RANK / TEAM NAME</span>
+                <span>WEEK PTS / TOTAL NET</span>
             </div>
         `;
 
@@ -87,27 +78,24 @@ window.filterDivision = function(divName) {
             const themeColor = isDivA ? '#D4AF37' : '#C0C0C0';
             const rankColor = pos === 1 ? themeColor : (pos <= 3 ? '#fff' : '#444');
 
-            const livePoints = p.gw_live_points || 0;
-            const totalNet = p.tournament_total_net_points || 0;
-
             html += `
-                <div style="background: #111; margin-bottom: 8px; border-radius: 12px; padding: 14px; display: flex; align-items: center; border: 1px solid #1a1a1a; transition: 0.3s;">
+                <div style="background: #111; margin-bottom: 8px; border-radius: 12px; padding: 14px; display: flex; align-items: center; border: 1px solid #1a1a1a;">
                     <div style="width: 25px; font-weight: 900; font-size: 1rem; color: ${rankColor}; text-align: center;">${pos}</div>
                     
                     <div style="flex: 1; min-width: 0; padding-right: 10px; margin-left: 12px;">
                         <div style="font-weight: 800; color: #fff; font-size: 0.85rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
                             ${p.team || 'Unknown Team'}
                         </div>
-                        <div style="font-size: 0.65rem; color: #555; text-transform: uppercase; letter-spacing: 0.5px;">${p.name || 'Manager'}</div>
+                        <div style="font-size: 0.6rem; color: #555; text-transform: uppercase;">${p.name || 'Manager'}</div>
                     </div>
 
                     <div style="text-align: right;">
                         <div style="font-weight: 900; font-size: 1.4rem; color: #00ff88; line-height: 1;">
-                            ${livePoints}
+                            ${p.gw_live_points || 0}
                         </div>
                         <div style="margin-top: 4px;">
-                            <span style="font-size: 0.55rem; font-weight: 800; color: ${themeColor}; background: rgba(255,255,255,0.05); padding: 2px 6px; border-radius: 4px;">
-                                TOTAL: ${totalNet}
+                            <span style="font-size: 0.55rem; font-weight: 800; color: #888; background: rgba(255,255,255,0.05); padding: 2px 6px; border-radius: 4px;">
+                                NET: ${p.tournament_total_net_points || 0}
                             </span>
                         </div>
                     </div>
